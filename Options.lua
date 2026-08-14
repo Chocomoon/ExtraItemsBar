@@ -30,6 +30,14 @@ end
 
 local customListSelected1, customListSelected2
 
+local currentBarID = 1
+local showCustom = false
+local showBlacklist = false
+local showAbout = false
+local barFrame, aboutFrame, customFrame, blacklistFrame, rightScroll, rightContent
+
+local UpdateRightPane
+
 local function GetIconString(icon, height, width)
 	if icon then
 		return format("|T%s:%d:%d:0:0:64:64:5:59:5:59|t ", icon, height, width)
@@ -298,6 +306,72 @@ local function CreateButton(row, label, func, disabledFn)
 	return Track(widget, disabledFn)
 end
 
+local function CreateAddItemRow(row, getList, add, disabledFn, tooltip)
+	local eb = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
+	eb:SetSize(96, 22)
+	eb:SetPoint("RIGHT", row, "RIGHT", -72, 0)
+	eb:SetAutoFocus(false)
+	eb:SetTextInsets(6, 6, 0, 0)
+
+	local addBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+	addBtn:SetSize(56, 22)
+	addBtn:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+	addBtn:SetText(L["Add"])
+
+	local function TryAdd()
+		local itemID = tonumber(eb:GetText())
+		if not itemID or itemID <= 0 then
+			EIB:Print(L["The item ID is invalid."])
+			eb:SetText("")
+			eb:SetFocus()
+			return
+		end
+		local instance = async.WithItemID(itemID, function(item)
+			if not item or not item:GetItemName() or item:GetItemName() == "" then
+				EIB:Print(L["The item ID is invalid."])
+				return
+			end
+			if add(itemID) then
+				eb:SetText("")
+				eb:ClearFocus()
+				Refresh()
+			end
+		end)
+		if not instance then
+			EIB:Print(L["The item ID is invalid."])
+		end
+	end
+
+	addBtn:SetScript("OnClick", TryAdd)
+	eb:SetScript("OnEnterPressed", function(self)
+		TryAdd()
+		self:ClearFocus()
+	end)
+	eb:SetScript("OnEscapePressed", function(self)
+		self:ClearFocus()
+	end)
+
+	if tooltip then
+		eb:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText(tooltip, nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		eb:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
+	end
+
+	return Track({
+		SetDisabled = function(_, disabled)
+			eb:SetEnabled(not disabled)
+			addBtn:SetEnabled(not disabled)
+			eb:SetAlpha(disabled and 0.4 or 1)
+			addBtn:SetAlpha(disabled and 0.4 or 1)
+		end,
+	}, disabledFn)
+end
+
 -- ---------------------------------------------------------------------------
 -- Shared value builders
 -- ---------------------------------------------------------------------------
@@ -334,37 +408,169 @@ local anchorValues = {
 	BOTTOMRIGHT = L["BOTTOMRIGHT"],
 }
 
-local function CustomListValues(listFn)
-	return function()
-		local result = {}
-		for key, value in pairs(listFn()) do
-			async.WithItemID(tonumber(value) or value, function(item)
-				local name = item:GetItemName() or L["Unknown"]
-				local tex = item:GetItemIcon()
-				result[key] = GetIconString(tex, 14, 18) .. name
-			end)
-		end
-		return result
+local itemLabels = {}
+
+local function GetItemLabel(itemID)
+	local cached = itemLabels[itemID]
+	if cached then
+		return cached
 	end
+	async.WithItemID(itemID, function(item)
+		if item and item:GetItemName() then
+			itemLabels[itemID] = GetIconString(item:GetItemIcon(), 14, 18) .. item:GetItemName()
+			Refresh()
+		end
+	end)
+	return tostring(itemID)
+end
+
+local function CreateItemList(layout, parent, getList, selectedGet, selectedSet, deleteFn, disabledFn)
+	local rowH = 24
+	local maxRows = 10
+	local titleH = 20
+	local deleteH = 28
+
+	local reserved = maxRows * rowH + titleH + deleteH
+
+	local listFrame = CreateFrame("Frame", nil, parent)
+	listFrame:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, layout.y)
+	listFrame:SetWidth(parent:GetWidth() - 20)
+	listFrame:SetHeight(reserved)
+	layout.y = layout.y - reserved
+
+	local title = listFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	title:SetPoint("TOPLEFT", listFrame, "TOPLEFT", 4, -2)
+
+	local rows = {}
+
+	local deleteBtn = CreateFrame("Button", nil, listFrame, "UIPanelButtonTemplate")
+	deleteBtn:SetSize(120, deleteH - 4)
+	deleteBtn:SetPoint("BOTTOMLEFT", listFrame, "BOTTOMLEFT", 2, 2)
+	deleteBtn:SetText(L["Delete"])
+	deleteBtn:SetScript("OnClick", function()
+		if selectedGet() then
+			deleteFn(selectedGet())
+		end
+	end)
+
+	local self = {
+		reserved = reserved,
+		onResize = nil,
+		GetCurrentHeight = function()
+			return listFrame:GetHeight()
+		end,
+	}
+
+	Track({
+		refresh = function()
+			local items = getList()
+			local count = 0
+			for _ in pairs(items) do
+				count = count + 1
+			end
+			title:SetText(format(L["%d items"], count))
+
+			local n = math.min(count, maxRows)
+			while #rows < n do
+				local e = CreateFrame("Button", nil, listFrame, "BackdropTemplate")
+				e:SetPoint("TOPLEFT", listFrame, "TOPLEFT", 2, -(titleH + #rows * rowH))
+				e:SetSize(listFrame:GetWidth() - 4, rowH)
+				e:SetBackdrop({
+					bgFile = "Interface\\Buttons\\WHITE8X8",
+					edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+					edgeSize = 5,
+					insets = { left = 1, right = 1, top = 1, bottom = 1 },
+				})
+				e:SetBackdropColor(0, 0, 0, 0.25)
+				e:SetBackdropBorderColor(0, 0, 0, 0)
+				e.name = e:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+				e.name:SetPoint("LEFT", e, "LEFT", 6, 0)
+				e.name:SetPoint("RIGHT", e, "RIGHT", -6, 0)
+				e.name:SetJustifyH("LEFT")
+				e:SetScript("OnClick", function(btn)
+					selectedSet(btn.itemID)
+					Refresh()
+				end)
+				tinsert(rows, e)
+			end
+
+			for i = n + 1, #rows do
+				rows[i]:Hide()
+			end
+
+			local i = 0
+			for key, value in pairs(items) do
+				if i >= n then
+					break
+				end
+				local itemID = tonumber(value)
+				if not itemID then
+					itemID = tonumber(key)
+				end
+				if itemID then
+					i = i + 1
+					local e = rows[i]
+					e:Show()
+					e.itemID = itemID
+					e.name:SetText(GetItemLabel(itemID))
+					if selectedGet() == itemID then
+						e:SetBackdropColor(0.15, 0.45, 1, 0.55)
+						e:SetBackdropBorderColor(1, 1, 1, 0.8)
+					else
+						e:SetBackdropColor(0, 0, 0, 0.25)
+						e:SetBackdropBorderColor(0, 0, 0, 0)
+					end
+				end
+			end
+
+			listFrame:SetHeight(n * rowH + titleH + deleteH)
+			if selectedGet() then
+				deleteBtn:SetEnabled(true)
+				deleteBtn:SetAlpha(1)
+			else
+				deleteBtn:SetEnabled(false)
+				deleteBtn:SetAlpha(0.4)
+			end
+			if self.onResize then
+				self.onResize()
+			end
+		end,
+		SetDisabled = function(_, disabled)
+			if disabled then
+				for _, e in ipairs(rows) do
+					e:SetEnabled(false)
+				end
+				deleteBtn:SetEnabled(false)
+				deleteBtn:SetAlpha(0.4)
+			else
+				for _, e in ipairs(rows) do
+					e:SetEnabled(true)
+				end
+			end
+		end,
+	}, disabledFn)
+
+	return self
 end
 
 -- ---------------------------------------------------------------------------
 -- Layout
 -- ---------------------------------------------------------------------------
 
-local function NewLayout(parent)
+local function NewLayout(parent, compact)
 	local layout = { y = -6 }
 
 	function layout:Header(text)
-		self.y = self.y - 8
-		local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+		self.y = self.y - (compact and 4 or 8)
+		local fs = parent:CreateFontString(nil, "OVERLAY", compact and "GameFontNormal" or "GameFontNormalLarge")
 		fs:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, self.y)
 		fs:SetText(text)
-		self.y = self.y - 32
+		self.y = self.y - (compact and 22 or 32)
+		return fs
 	end
 
 	function layout:Row(label, controlBuilder, height)
-		height = height or 28
+		height = height or (compact and 24 or 28)
 		local row = CreateFrame("Frame", nil, parent)
 		row:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, self.y)
 		row:SetSize(parent:GetWidth() - 20, height)
@@ -386,7 +592,7 @@ local function NewLayout(parent)
 	end
 
 	function layout:Text(text, height)
-		height = height or 60
+		height = height or (compact and 40 or 60)
 		local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 		fs:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, self.y)
 		fs:SetWidth(parent:GetWidth() - 24)
@@ -398,7 +604,7 @@ local function NewLayout(parent)
 	end
 
 	function layout:Space(height)
-		self.y = self.y - (height or 8)
+		self.y = self.y - (height or (compact and 4 or 8))
 	end
 
 	return layout
@@ -499,9 +705,9 @@ local function BuildFontGroup(layout, groupDB, disabledFn)
 	end)
 end
 
-local function BuildBarSection(layout, barID)
+local function BuildBarSection(layout)
 	local barDB = function()
-		return GetDB()["bar" .. barID]
+		return GetDB()["bar" .. currentBarID]
 	end
 	local masterDisabled = function()
 		return not GetDB().enable
@@ -510,7 +716,12 @@ local function BuildBarSection(layout, barID)
 		return masterDisabled() or not barDB().mouseOver
 	end
 
-	layout:Header(L["Bar"] .. " " .. barID)
+	local titleFS = layout:Header(L["Bar"] .. " " .. currentBarID)
+	Track({
+		refresh = function()
+			titleFS:SetText(L["Bar"] .. " " .. currentBarID)
+		end,
+	})
 
 	layout:Row(L["Enable"], function(row)
 		CreateCheckbox(
@@ -520,7 +731,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().enable = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			masterDisabled
 		)
@@ -534,7 +745,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().include = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			masterDisabled,
 			groupTooltip
@@ -545,8 +756,8 @@ local function BuildBarSection(layout, barID)
 			row,
 			L["Reset"],
 			function()
-				EIB.DB.ResetBar(barID)
-				EIB:UpdateBar(barID)
+				EIB.DB.ResetBar(currentBarID)
+				EIB:UpdateBar(currentBarID)
 				Refresh()
 			end,
 			masterDisabled
@@ -563,7 +774,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().mouseOver = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			masterDisabled
 		)
@@ -636,7 +847,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().visibility = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			masterDisabled
 		)
@@ -650,7 +861,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().backdrop = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			masterDisabled
 		)
@@ -666,7 +877,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().anchor = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			masterDisabled
 		)
@@ -679,7 +890,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().backdropSpacing = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			1,
 			30,
@@ -696,7 +907,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().spacing = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			1,
 			30,
@@ -713,7 +924,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().numButtons = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			1,
 			12,
@@ -730,7 +941,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().buttonWidth = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			2,
 			60,
@@ -747,7 +958,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().buttonHeight = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			2,
 			60,
@@ -764,7 +975,7 @@ local function BuildBarSection(layout, barID)
 			end,
 			function(value)
 				barDB().buttonsPerRow = value
-				EIB:UpdateBar(barID)
+				EIB:UpdateBar(currentBarID)
 			end,
 			1,
 			12,
@@ -864,6 +1075,264 @@ end
 -- Panel construction
 -- ---------------------------------------------------------------------------
 
+local function BuildGeneral(parent)
+	local layout = NewLayout(parent, true)
+
+	layout:Header(L["Extra Items Bar"])
+
+	layout:Row(L["Enable"], function(row)
+		CreateCheckbox(
+			row,
+			function()
+				return GetDB().enable
+			end,
+			function(value)
+				GetDB().enable = value
+				EIB:ProfileUpdate()
+			end
+		)
+	end)
+
+	layout:Space()
+	layout:Row(L["No Quantum Items"], function(row)
+		CreateCheckbox(
+			row,
+			function()
+				return GetDB().noQuantumItems
+			end,
+			function(value)
+				GetDB().noQuantumItems = value
+				EIB:ProfileUpdate()
+			end,
+			function()
+				return not GetDB().enable
+			end
+		)
+	end)
+
+	parent:SetHeight(math.abs(layout.y) + 20)
+end
+
+local function BuildCustomSection(parent)
+	local layout = NewLayout(parent)
+
+	layout:Header(L["Custom Items"])
+	layout:Row(L["New Item ID"], function(row)
+		CreateAddItemRow(
+			row,
+			function()
+				return GetDB().customList
+			end,
+			function(itemID)
+				for _, id in ipairs(GetDB().customList) do
+					if id == itemID then
+						EIB:Print(L["Item is already in the list."])
+						return false
+					end
+				end
+				tinsert(GetDB().customList, itemID)
+				EIB:UpdateBars()
+				return true
+			end,
+			function()
+				return not GetDB().enable
+			end,
+			L["Enter an item ID and press Enter or click Add."]
+		)
+	end)
+	local customList = CreateItemList(
+		layout,
+		parent,
+		function()
+			return GetDB().customList
+		end,
+		function()
+			return customListSelected1
+		end,
+		function(value)
+			customListSelected1 = value
+		end,
+		function(itemID)
+			for i, id in ipairs(GetDB().customList) do
+				if id == itemID then
+					tremove(GetDB().customList, i)
+					break
+				end
+			end
+			customListSelected1 = nil
+			EIB:UpdateBars()
+			Refresh()
+		end,
+		function()
+			return not GetDB().enable
+		end
+	)
+
+	parent:SetHeight(math.abs(layout.y) + 20)
+	local finalHeight = parent:GetHeight()
+	customList.onResize = function()
+		parent:SetHeight(finalHeight - customList.reserved + customList:GetCurrentHeight())
+		UpdateRightPane()
+	end
+end
+
+local function BuildBlacklistSection(parent)
+	local layout = NewLayout(parent)
+
+	layout:Header(L["Blacklist"])
+	layout:Row(L["New Item ID"], function(row)
+		CreateAddItemRow(
+			row,
+			function()
+				return GetDB().blackList
+			end,
+			function(itemID)
+				if GetDB().blackList[itemID] then
+					EIB:Print(L["Item is already in the list."])
+					return false
+				end
+				GetDB().blackList[itemID] = true
+				EIB:UpdateBars()
+				return true
+			end,
+			function()
+				return not GetDB().enable
+			end,
+			L["Enter an item ID and press Enter or click Add."]
+		)
+	end)
+	local blackList = CreateItemList(
+		layout,
+		parent,
+		function()
+			return GetDB().blackList
+		end,
+		function()
+			return customListSelected2
+		end,
+		function(value)
+			customListSelected2 = value
+		end,
+		function(itemID)
+			GetDB().blackList[itemID] = nil
+			customListSelected2 = nil
+			EIB:UpdateBars()
+			Refresh()
+		end,
+		function()
+			return not GetDB().enable
+		end
+	)
+
+	parent:SetHeight(math.abs(layout.y) + 20)
+	local finalHeight = parent:GetHeight()
+	blackList.onResize = function()
+		parent:SetHeight(finalHeight - blackList.reserved + blackList:GetCurrentHeight())
+		UpdateRightPane()
+	end
+end
+
+local function CreateSelectButton(parent, text, mode, y)
+	local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
+	btn:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, y)
+	btn:SetSize(150, 26)
+	btn:SetBackdrop({
+		bgFile = "Interface\\Buttons\\WHITE8X8",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		edgeSize = 6,
+		insets = { left = 2, right = 2, top = 2, bottom = 2 },
+	})
+	btn.label = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	btn.label:SetPoint("LEFT", btn, "LEFT", 8, 0)
+	btn.label:SetText(text)
+	btn.label:SetJustifyH("LEFT")
+
+	btn:SetScript("OnClick", function()
+		if type(mode) == "number" then
+			currentBarID = mode
+			showCustom = false
+			showBlacklist = false
+			showAbout = false
+		elseif mode == "custom" then
+			showCustom = true
+			showBlacklist = false
+			showAbout = false
+		elseif mode == "blacklist" then
+			showCustom = false
+			showBlacklist = true
+			showAbout = false
+		else
+			showCustom = false
+			showBlacklist = false
+			showAbout = true
+		end
+		UpdateRightPane()
+		Refresh()
+	end)
+
+	Track({
+		refresh = function()
+			local selected = false
+			if type(mode) == "number" then
+				selected = not showCustom and not showBlacklist and not showAbout and currentBarID == mode
+			elseif mode == "custom" then
+				selected = showCustom
+			elseif mode == "blacklist" then
+				selected = showBlacklist
+			else
+				selected = showAbout
+			end
+			if selected then
+				btn:SetBackdropColor(0.15, 0.45, 1, 0.7)
+				btn:SetBackdropBorderColor(1, 1, 1, 0.9)
+			else
+				btn:SetBackdropColor(0, 0, 0, 0.25)
+				btn:SetBackdropBorderColor(0, 0, 0, 0)
+			end
+			btn.label:SetTextColor(selected and 1 or 0.7, selected and 1 or 0.7, selected and 1 or 0.7, 1)
+		end,
+	})
+end
+
+local function BuildBarSelector(parent)
+	parent.header = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	parent.header:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, -6)
+	parent.header:SetText(L["Bars"])
+
+	local y = -40
+	for i = 1, 5 do
+		CreateSelectButton(parent, L["Bar"] .. " " .. i, i, y)
+		y = y - 30
+	end
+	CreateSelectButton(parent, L["Custom Items"], "custom", y)
+	y = y - 30
+	CreateSelectButton(parent, L["Blacklist"], "blacklist", y)
+	y = y - 30
+	CreateSelectButton(parent, L["About"], "about", y)
+end
+
+UpdateRightPane = function()
+	if not barFrame or not aboutFrame or not customFrame or not blacklistFrame then
+		return
+	end
+
+	local visible = barFrame
+	if showCustom then
+		visible = customFrame
+	elseif showBlacklist then
+		visible = blacklistFrame
+	elseif showAbout then
+		visible = aboutFrame
+	end
+
+	barFrame:SetShown(visible == barFrame)
+	customFrame:SetShown(visible == customFrame)
+	blacklistFrame:SetShown(visible == blacklistFrame)
+	aboutFrame:SetShown(visible == aboutFrame)
+	rightContent:SetHeight(visible:GetHeight())
+	rightScroll:SetVerticalScroll(0)
+end
+
 Refresh = function()
 	for _, widget in ipairs(widgets) do
 		if widget.refresh then
@@ -887,170 +1356,58 @@ function EIB:RegisterOptionsPanel()
 	self.optionsPanel = panel
 	panel:SetWidth(674)
 
-	local scroll = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
-	scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, 0)
-	scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -24, 0)
+	local general = CreateFrame("Frame", nil, panel)
+	general:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, 0)
+	general:SetWidth(650)
+	BuildGeneral(general)
 
-	local content = CreateFrame("Frame", nil, scroll)
-	content:SetWidth(650)
-	content:SetPoint("TOPLEFT", scroll, "TOPLEFT", 0, 0)
+	local split = CreateFrame("Frame", nil, panel)
+	split:SetPoint("TOPLEFT", general, "BOTTOMLEFT", 0, 0)
+	split:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 0)
 
-	local layout = NewLayout(content)
+	local left = CreateFrame("Frame", nil, split)
+	left:SetPoint("TOPLEFT", split, "TOPLEFT", 0, 0)
+	left:SetPoint("BOTTOMLEFT", split, "BOTTOMLEFT", 0, 0)
+	left:SetWidth(170)
+	BuildBarSelector(left)
 
-	layout:Header(L["Extra Items Bar"])
-	layout:Text(L["Add a bar to contain quest items and usable equipment."])
-	layout:Space()
+	rightScroll = CreateFrame("ScrollFrame", nil, split, "UIPanelScrollFrameTemplate")
+	rightScroll:SetPoint("TOPLEFT", left, "TOPRIGHT", 4, 0)
+	rightScroll:SetPoint("BOTTOMRIGHT", split, "BOTTOMRIGHT", -20, 0)
 
-	layout:Row(L["Enable"], function(row)
-		CreateCheckbox(
-			row,
-			function()
-				return GetDB().enable
-			end,
-			function(value)
-				GetDB().enable = value
-				EIB:ProfileUpdate()
-			end
-		)
-	end)
+	rightContent = CreateFrame("Frame", nil, rightScroll)
+	rightContent:SetWidth(480)
+	rightContent:SetPoint("TOPLEFT", rightScroll, "TOPLEFT", 0, 0)
 
-	layout:Space()
-	layout:Header(L["Custom Items"])
-	layout:Row(L["New Item ID"], function(row)
-		CreateEditBox(
-			row,
-			function()
-				return ""
-			end,
-			function(value)
-				local itemID = tonumber(value)
-				if itemID and async.WithItemID(itemID) then
-					tinsert(GetDB().customList, itemID)
-					EIB:UpdateBars()
-				else
-					EIB:Print(L["The item ID is invalid."])
-				end
-			end,
-			function()
-				return not GetDB().enable
-			end
-		)
-	end)
-	layout:Row(L["List"], function(row)
-		CreateDropdown(
-			row,
-			CustomListValues(function()
-				return GetDB().customList
-			end),
-			function()
-				return customListSelected1
-			end,
-			function(value)
-				customListSelected1 = value
-			end,
-			function()
-				return not GetDB().enable
-			end
-		)
-	end)
-	layout:Row(L["Delete"], function(row)
-		CreateButton(
-			row,
-			L["Delete"],
-			function()
-				if customListSelected1 then
-					tremove(GetDB().customList, customListSelected1)
-					customListSelected1 = nil
-					EIB:UpdateBars()
-					Refresh()
-				end
-			end,
-			function()
-				return not GetDB().enable
-			end
-		)
-	end)
+	barFrame = CreateFrame("Frame", nil, rightContent)
+	barFrame:SetPoint("TOPLEFT", rightContent, "TOPLEFT", 0, 0)
+	barFrame:SetWidth(480)
+	local barLayout = NewLayout(barFrame)
+	BuildBarSection(barLayout)
+	barFrame:SetHeight(math.abs(barLayout.y) + 20)
 
-	layout:Space()
-	layout:Header(L["Blacklist"])
-	layout:Row(L["New Item ID"], function(row)
-		CreateEditBox(
-			row,
-			function()
-				return ""
-			end,
-			function(value)
-				local itemID = tonumber(value)
-				if itemID and async.WithItemID(itemID) then
-					GetDB().blackList[itemID] = true
-					EIB:UpdateBars()
-				else
-					EIB:Print(L["The item ID is invalid."])
-				end
-			end,
-			function()
-				return not GetDB().enable
-			end
-		)
-	end)
-	layout:Row(L["List"], function(row)
-		CreateDropdown(
-			row,
-			CustomListValues(function()
-				return GetDB().blackList
-			end),
-			function()
-				return customListSelected2
-			end,
-			function(value)
-				customListSelected2 = value
-			end,
-			function()
-				return not GetDB().enable
-			end
-		)
-	end)
-	layout:Row(L["Delete"], function(row)
-		CreateButton(
-			row,
-			L["Delete"],
-			function()
-				if customListSelected2 then
-					GetDB().blackList[customListSelected2] = nil
-					customListSelected2 = nil
-					EIB:UpdateBars()
-					Refresh()
-				end
-			end,
-			function()
-				return not GetDB().enable
-			end
-		)
-	end)
-	layout:Row(L["No Quantum Items"], function(row)
-		CreateCheckbox(
-			row,
-			function()
-				return GetDB().noQuantumItems
-			end,
-			function(value)
-				GetDB().noQuantumItems = value
-				EIB:ProfileUpdate()
-			end,
-			function()
-				return not GetDB().enable
-			end
-		)
-	end)
+	customFrame = CreateFrame("Frame", nil, rightContent)
+	customFrame:SetPoint("TOPLEFT", rightContent, "TOPLEFT", 0, 0)
+	customFrame:SetWidth(480)
+	BuildCustomSection(customFrame)
+	customFrame:Hide()
 
-	for barID = 1, 5 do
-		BuildBarSection(layout, barID)
-	end
+	blacklistFrame = CreateFrame("Frame", nil, rightContent)
+	blacklistFrame:SetPoint("TOPLEFT", rightContent, "TOPLEFT", 0, 0)
+	blacklistFrame:SetWidth(480)
+	BuildBlacklistSection(blacklistFrame)
+	blacklistFrame:Hide()
 
-	BuildAbout(layout)
+	aboutFrame = CreateFrame("Frame", nil, rightContent)
+	aboutFrame:SetPoint("TOPLEFT", rightContent, "TOPLEFT", 0, 0)
+	aboutFrame:SetWidth(480)
+	local aboutLayout = NewLayout(aboutFrame)
+	BuildAbout(aboutLayout)
+	aboutFrame:SetHeight(math.abs(aboutLayout.y) + 20)
+	aboutFrame:Hide()
 
-	content:SetHeight(math.abs(layout.y) + 20)
-	scroll:SetScrollChild(content)
+	rightScroll:SetScrollChild(rightContent)
+	UpdateRightPane()
 
 	panel:SetScript("OnShow", Refresh)
 

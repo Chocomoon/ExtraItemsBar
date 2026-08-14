@@ -60,6 +60,7 @@ EIB.dbDefault = {
 			[245964] = true, -- Durable Informant Collection Device
 			[245965] = true, -- Durable Informant Collection Device
 			[245966] = true, -- Durable Informant Collection Device
+			[248583] = true, -- Drum of Renewed Bonds
 		},
 		bar1 = barDefaults(),
 		bar2 = (function()

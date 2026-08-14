@@ -437,7 +437,7 @@ function EB:SetUpButton(button, itemData, slotID, waitGroup)
 		local macroText
 		if button.slotID then
 			macroText = "/use " .. button.slotID
-		elseif button.itemName then
+		elseif button.itemID then
 			macroText = "/use item:" .. button.itemID
 			if button.itemID == 172347 then
 				macroText = macroText .. "\n/use 5"

@@ -100,6 +100,10 @@ local defaultLocale = {
 	["Toggle drag mode to reposition the bars."] = "Toggle drag mode to reposition the bars.",
 	["Reset Positions"] = "Reset Positions",
 	["Reset all bar positions to default."] = "Reset all bar positions to default.",
+	["Add"] = "Add",
+	["Item is already in the list."] = "Item is already in the list.",
+	["Enter an item ID and press Enter or click Add."] = "Enter an item ID and press Enter or click Add.",
+	["%d items"] = "%d items",
 }
 
 local zhCNLocale = {
@@ -197,6 +201,10 @@ local zhCNLocale = {
 	["Toggle drag mode to reposition the bars."] = "切换拖拽模式以调整物品条位置。",
 	["Reset Positions"] = "重置位置",
 	["Reset all bar positions to default."] = "将所有物品条位置重置为默认。",
+	["Add"] = "添加",
+	["Item is already in the list."] = "该物品已在列表中。",
+	["Enter an item ID and press Enter or click Add."] = "输入物品ID后按回车或点击添加。",
+	["%d items"] = "%d 个物品",
 }
 
 local zhTWLocale = {
@@ -294,6 +302,10 @@ local zhTWLocale = {
 	["Toggle drag mode to reposition the bars."] = "切換拖拽模式以調整物品列位置。",
 	["Reset Positions"] = "重置位置",
 	["Reset all bar positions to default."] = "將所有物品列位置重置為預設。",
+	["Add"] = "新增",
+	["Item is already in the list."] = "此物品已在清單中。",
+	["Enter an item ID and press Enter or click Add."] = "輸入物品ID後按 Enter 或點擊新增。",
+	["%d items"] = "%d 個物品",
 }
 
 local translations = defaultLocale
