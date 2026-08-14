@@ -1,0 +1,49 @@
+Extra Items Bar - Copyright & Attribution
+=========================================
+
+This addon is a standalone extraction of the "Extra Items Bar" module from
+ElvUI_WindTools.
+
+Source project:
+    ElvUI_WindTools
+    Author: fang2hou
+    Repository: https://github.com/fang2hou/ElvUI_WindTools
+
+The "Extra Items Bar" feature was originally ported into ElvUI_WindTools from
+EUI (author: cadcamzy). See the Credits section of the ElvUI_WindTools
+repository for the full attribution chain.
+
+License
+-------
+ElvUI_WindTools is distributed under a restricted-source license (see LICENSE
+in the upstream repository). Its key terms are:
+
+  1. Within the ElvUI and NDui ecosystems, the code is licensed under GNU GPLv3.
+  2. Any copying, reuse, porting, or redistribution of this code outside the
+     ElvUI and NDui ecosystems requires a separate written license from the
+     author(s).
+
+This standalone addon (which does not depend on ElvUI) falls outside the
+ElvUI/NDui ecosystems. The code herein is used and modified with the author's
+permission. If you redistribute or further modify this addon, please keep this
+notice and the per-file attribution comments intact.
+
+Modifications
+-------------
+The ported files (Modules/ExtraItemsBar.lua, Modules/ExtraItemsBar_Data.lua,
+Async.lua) are derived from ElvUI_WindTools and have been modified to remove
+all ElvUI/WindTools framework dependencies:
+
+  - ElvUI profile DB  -> EIB_DB SavedVariables
+  - ElvUI mover       -> self-implemented drag & unlock system (Move.lua)
+  - ElvUI frame mixins (SetTemplate/CreateBackdrop/StyleButton)
+                      -> native BackdropTemplate/SetBackdrop + custom button states
+  - ElvUI options tree-> Blizzard "Interface Options" panel
+  - ElvUI ActionBars global fade -> removed
+  - WindTools Skins shadow modules -> removed
+  - AceEvent-3.0      -> lightweight native event dispatcher (Event.lua)
+  - AceTimer-3.0      -> not used by this module
+  - WindTools Async   -> embedded Async.lua (only WithItemID/WithItemSlotID kept)
+
+Game data (item ID tables) is copied verbatim from ExtraItemBar_Data.lua and
+is used under the same terms as above.

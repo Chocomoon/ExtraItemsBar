@@ -1,0 +1,29 @@
+## Interface: 120007
+## Title: Extra Items Bar
+## Title-zhCN: 额外物品条
+## Notes: A standalone extraction of the "Extra Items Bar" module from ElvUI_WindTools. No ElvUI required.
+## Notes-zhCN: 抽离自 ElvUI_WindTools 的"额外物品条"模块，完全独立运行，无需 ElvUI。
+## OptionalDeps: LibSharedMedia-3.0
+## SavedVariables: EIB_DB
+## IconTexture: Interface\Icons\INV_Misc_Bag_08
+
+# ============================================================================
+# Extra Items Bar
+#
+# This addon is a standalone extraction of the "Extra Items Bar" module from
+# ElvUI_WindTools by fang2hou (https://github.com/fang2hou/ElvUI_WindTools).
+# The original feature was ported into ElvUI_WindTools from EUI (author: cadcamzy).
+#
+# Used and modified under the terms of the ElvUI_WindTools license with the
+# author's permission. See NOTICE.txt for details.
+# ============================================================================
+
+Core.lua
+Locale.lua
+Event.lua
+Async.lua
+DB.lua
+Move.lua
+Modules\ExtraItemsBar_Data.lua
+Modules\ExtraItemsBar.lua
+Options.lua
