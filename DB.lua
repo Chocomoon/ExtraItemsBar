@@ -31,7 +31,7 @@ local function barDefaults()
 		buttonHeight = 30,
 		buttonsPerRow = 12,
 		anchor = "TOPLEFT",
-		spacing = 3,
+		spacing = 2,
 		tooltip = true,
 		qualityTier = {
 			size = 16,

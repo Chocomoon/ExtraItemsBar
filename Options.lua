@@ -265,7 +265,46 @@ local function CreateDropdown(row, valueBuilder, get, set, disabledFn)
 			local values = valueBuilder() or {}
 			local current = get()
 			UIDropDownMenu_SetText(dd, values[current] or tostring(current or ""))
-			UIDropDownMenu_MatchTextWidth(dd, 50)
+
+			-- The template's hidden Left/Middle/Right chain anchors the text far
+			-- from the frame edges and UIDropDownMenu_MatchTextWidth adds double
+			-- padding, so lay the collapsed control out manually to hug the text.
+			dd:SetHeight(22)
+
+			local text = dd.Text
+			text:SetJustifyH("LEFT")
+			text:ClearAllPoints()
+			text:SetPoint("LEFT", dd, "LEFT", 8, 0)
+			text:SetPoint("RIGHT", dd, "RIGHT", -24, 0)
+
+			local btn = dd.Button
+			btn:ClearAllPoints()
+			btn:SetPoint("TOPLEFT", dd, "TOPLEFT", 0, 0)
+			btn:SetPoint("BOTTOMRIGHT", dd, "BOTTOMRIGHT", 0, 0)
+
+			local arrow = btn:GetNormalTexture()
+			if arrow then
+				arrow:SetTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+				arrow:SetSize(14, 14)
+				arrow:ClearAllPoints()
+				arrow:SetPoint("RIGHT", btn, "RIGHT", -7, 0)
+			end
+
+			local hl = btn:GetHighlightTexture()
+			if hl then
+				hl:ClearAllPoints()
+				hl:SetPoint("TOPLEFT", btn, "TOPLEFT", 0, 0)
+				hl:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 0, 0)
+			end
+
+			local pushed = btn:GetPushedTexture()
+			if pushed then
+				pushed:ClearAllPoints()
+				pushed:SetPoint("TOPLEFT", btn, "TOPLEFT", 0, 0)
+				pushed:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 0, 0)
+			end
+
+			dd:SetWidth(max(text:GetUnboundedStringWidth() + 32, 40))
 		end,
 		SetDisabled = function(_, disabled)
 			dd:SetAlpha(disabled and 0.4 or 1)

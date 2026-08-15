@@ -145,6 +145,14 @@ EIB.eventFrame:SetScript("OnEvent", function(_, event, addonLoaded)
 
 		EIB:MergeDefaults(EIB.db.profile, EIB.dbDefault)
 
+		-- One-time migration: the default button spacing was reduced from 3 to 2,
+		-- so bring existing bars saved with the old default down to the new one.
+		for _, bar in pairs(EIB:GetItemDB()) do
+			if type(bar) == "table" and bar.spacing == 3 then
+				bar.spacing = 2
+			end
+		end
+
 		EIB:Initialize()
 		EIB:OpenOptionsLater()
 	elseif event == "PLAYER_LOGIN" and not EIB.optionsPanel then

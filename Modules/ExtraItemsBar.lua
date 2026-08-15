@@ -42,12 +42,25 @@ local C_Item_GetItemCount = C_Item.GetItemCount
 local C_Item_GetItemInfoInstant = C_Item.GetItemInfoInstant
 local C_Item_IsItemInRange = C_Item.IsItemInRange
 local C_Item_IsUsableItem = C_Item.IsUsableItem
+local C_Texture_GetAtlasInfo = C_Texture.GetAtlasInfo
 local C_QuestLog_GetDistanceSqToQuest = C_QuestLog.GetDistanceSqToQuest
 local C_QuestLog_GetNumQuestLogEntries = C_QuestLog.GetNumQuestLogEntries
 local C_QuestLog_GetQuestIDForLogIndex = C_QuestLog.GetQuestIDForLogIndex
 local C_Timer_After = C_Timer.After
 local C_Timer_NewTicker = C_Timer.NewTicker
 local C_TradeSkillUI_GetItemReagentQualityInfo = C_TradeSkillUI.GetItemReagentQualityInfo
+
+local GRID_MASK_SCALE = 1
+
+local gridAtlasInfo
+local function GetGridAtlasInfo()
+	if not gridAtlasInfo then
+		local frame = C_Texture_GetAtlasInfo("UI-HUD-ActionBar-IconFrame")
+		local mask = C_Texture_GetAtlasInfo("UI-HUD-ActionBar-IconFrame-Mask")
+		gridAtlasInfo = frame and mask and { frame = frame, mask = mask } or false
+	end
+	return gridAtlasInfo
+end
 
 local questItemList = {}
 local function UpdateQuestItemList()
@@ -210,13 +223,10 @@ local styleConfig = {
 		button = {
 			backdrop = {
 				bgFile = "Interface\\Buttons\\WHITE8X8",
-				edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-				tile = true,
-				tileSize = 16,
-				edgeSize = 16,
-				insets = { left = 3, right = 3, top = 3, bottom = 3 },
+				tile = false,
+				edgeSize = 0,
 			},
-			bgColor = { 0, 0, 0, 0.8 },
+			bgColor = { 0, 0, 0, 0 },
 			borderColor = { 0.6, 0.6, 0.6, 1 },
 			highlightColor = { 0.9, 0.9, 0.9, 0.25 },
 			pushedColor = { 0, 0, 0, 0.6 },
@@ -224,14 +234,11 @@ local styleConfig = {
 		bar = {
 			backdrop = {
 				bgFile = "Interface\\Buttons\\WHITE8X8",
-				edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-				tile = true,
-				tileSize = 16,
-				edgeSize = 16,
-				insets = { left = 3, right = 3, top = 3, bottom = 3 },
+				tile = false,
+				edgeSize = 0,
 			},
 			bgColor = { 0, 0, 0, 0.8 },
-			bgColorTransparent = { 0, 0, 0, 0.25 },
+			bgColorTransparent = { 0, 0, 0, 0 },
 			borderColor = { 0.6, 0.6, 0.6, 1 },
 		},
 	},
@@ -239,10 +246,12 @@ local styleConfig = {
 		button = {
 			backdrop = {
 				bgFile = "Interface\\Buttons\\WHITE8X8",
+				edgeFile = "Interface\\Buttons\\WHITE8X8",
 				tile = false,
-				edgeSize = 0,
+				edgeSize = 1,
+				insets = { left = 1, right = 1, top = 1, bottom = 1 },
 			},
-			bgColor = { 0, 0, 0, 0 },
+			bgColor = { 0, 0, 0, 0.35 },
 			borderColor = { 0, 0, 0, 1 },
 			highlightColor = { 1, 1, 1, 0.15 },
 			pushedColor = { 0, 0, 0, 0.5 },
@@ -250,10 +259,8 @@ local styleConfig = {
 		bar = {
 			backdrop = {
 				bgFile = "Interface\\Buttons\\WHITE8X8",
-				edgeFile = "Interface\\Buttons\\WHITE8X8",
 				tile = false,
-				edgeSize = 1,
-				insets = { left = 1, right = 1, top = 1, bottom = 1 },
+				edgeSize = 0,
 			},
 			bgColor = { 0, 0, 0, 0.8 },
 			bgColorTransparent = { 0, 0, 0, 0 },
@@ -296,11 +303,38 @@ end
 -- Apply the current bar style to an existing button backdrop without touching
 -- the border color, which is driven by item data (see SetUpButton).
 function EIB:StyleButtonBackdrop(button)
-	local cfg = styleConfig[EIB:GetBarStyle()].button
+	local style = EIB:GetBarStyle()
+	local cfg = styleConfig[style].button
 	button:SetBackdrop(cfg.backdrop)
 	button:SetBackdropColor(unpack(cfg.bgColor))
 
-	local iconInset = EIB:GetBarStyle() == "flat" and 0 or 1
+	local iconInset = style == "grid" and 2 or 1
+
+	if style == "grid" then
+		local info = GetGridAtlasInfo()
+		local frame = button.frameTexture
+		if not frame then
+			frame = button:CreateTexture(nil, "OVERLAY", nil, 1)
+			button.frameTexture = frame
+		end
+		if info then
+			local scale = button:GetWidth() / 45
+			frame:SetAtlas("UI-HUD-ActionBar-IconFrame")
+			frame:ClearAllPoints()
+			frame:SetPoint("TOPLEFT", button, "TOPLEFT")
+			frame:SetSize(info.frame.width * scale, info.frame.height * scale)
+			frame:Show()
+		else
+			frame:Hide()
+		end
+		EIB:ApplyIconMask(button)
+	else
+		if button.frameTexture then
+			button.frameTexture:Hide()
+		end
+		EIB:ApplyIconMask(button)
+	end
+
 	if button.tex then
 		button.tex:ClearAllPoints()
 		button.tex:SetPoint("TOPLEFT", button, "TOPLEFT", iconInset, -iconInset)
@@ -315,6 +349,36 @@ function EIB:StyleButtonBackdrop(button)
 	local pushed = button:GetPushedTexture()
 	if pushed then
 		pushed:SetVertexColor(unpack(cfg.pushedColor))
+	end
+end
+
+-- Round the icon corners of a grid button using the native IconFrame mask.
+function EIB:ApplyIconMask(button)
+	if not button.tex then
+		return
+	end
+
+	if EIB:GetBarStyle() == "grid" then
+		local info = GetGridAtlasInfo()
+		if not info then
+			return
+		end
+		if not button.iconMask then
+			button.iconMask = button:CreateMaskTexture(nil, "OVERLAY", nil)
+		end
+		local scale = button:GetWidth() / 45 * GRID_MASK_SCALE
+		local mask = button.iconMask
+		mask:SetAtlas("UI-HUD-ActionBar-IconFrame-Mask")
+		mask:ClearAllPoints()
+		mask:SetPoint("CENTER", button.tex, "CENTER")
+		mask:SetSize(info.mask.width * scale, info.mask.height * scale)
+		if not button.maskApplied then
+			button.tex:AddMaskTexture(mask)
+			button.maskApplied = true
+		end
+	elseif button.maskApplied then
+		button.tex:RemoveMaskTexture(button.iconMask)
+		button.maskApplied = false
 	end
 end
 
@@ -354,7 +418,7 @@ function EB:CreateButton(name, barDB)
 	button:SetBackdropBorderColor(unpack(styleConfig[EIB:GetBarStyle()].button.borderColor))
 
 	local tex = button:CreateTexture(nil, "OVERLAY", nil)
-	local iconInset = EIB:GetBarStyle() == "flat" and 0 or 1
+	local iconInset = EIB:GetBarStyle() == "grid" and 2 or 1
 	tex:SetPoint("TOPLEFT", button, "TOPLEFT", iconInset, -iconInset)
 	tex:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -iconInset, iconInset)
 	tex:SetTexCoord(EIB.TexCoords[1], EIB.TexCoords[2], EIB.TexCoords[3], EIB.TexCoords[4])
@@ -384,6 +448,7 @@ function EB:CreateButton(name, barDB)
 	cooldown:SetAllPoints(button)
 
 	button.tex = tex
+	EIB:ApplyIconMask(button)
 	button.qualityTier = qualityTier
 	button.count = count
 	button.bind = bind
@@ -417,7 +482,7 @@ function EB:SetUpButton(button, itemData, slotID, waitGroup)
 		button.itemID = itemData.itemID
 		button.countText = C_Item_GetItemCount(itemData.itemID, nil, true)
 		button.questLogIndex = itemData.questLogIndex
-		button:SetBackdropBorderColor(0, 0, 0)
+		button:SetBackdropBorderColor(unpack(styleConfig[EIB:GetBarStyle()].button.borderColor))
 
 		waitGroup.count = waitGroup.count + 1
 		async.WithItemID(itemData.itemID, function(item)
@@ -575,6 +640,8 @@ function EB:UpdateButtonSize(button, barDB)
 	end
 
 	button.tex:SetTexCoord(left, right, top, bottom)
+
+	EIB:StyleButtonBackdrop(button)
 end
 
 function EB:PLAYER_REGEN_ENABLED()
@@ -785,14 +852,8 @@ function EB:UpdateBar(id)
 		end
 	end
 
-	-- In the flat style the icons form a tight grid flush against the bar's
-	-- thin border, so the user-configurable spacing values do not apply.
 	local spacing = barDB.spacing
 	local backdropSpacing = barDB.backdropSpacing
-	if EIB:GetBarStyle() == "flat" then
-		spacing = 0
-		backdropSpacing = 1
-	end
 
 	-- Resize bar
 	local numRows = ceil((buttonID - 1) / barDB.buttonsPerRow)
