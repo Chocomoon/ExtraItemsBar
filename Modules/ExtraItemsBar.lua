@@ -504,9 +504,9 @@ function EB:CreateBar(id)
 		"WTExtraItemsBar" .. id .. "Mover",
 		L["Extra Items Bar"] .. " " .. id,
 		"BOTTOMLEFT",
-		_G.RightChatPanel or _G.LeftChatPanel,
-		"TOPLEFT",
-		0,
+		_G.UIParent,
+		"LEFT",
+		5,
 		(id - 1) * 45
 	)
 
