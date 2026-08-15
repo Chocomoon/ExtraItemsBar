@@ -149,6 +149,8 @@ EIB.eventFrame:SetScript("OnEvent", function(_, event, addonLoaded)
 		EIB:OpenOptionsLater()
 	elseif event == "PLAYER_LOGIN" and not EIB.optionsPanel then
 		EIB:RegisterOptionsPanel()
+		-- All addons are loaded by now, so auto style detection is accurate.
+		EIB:ApplyBarStyle()
 	end
 end)
 EIB.eventFrame:RegisterEvent("PLAYER_LOGIN")

@@ -217,7 +217,32 @@ end
 local function CreateDropdown(row, valueBuilder, get, set, disabledFn)
 	local dd = CreateFrame("Frame", nil, row, "UIDropDownMenuTemplate")
 	dd:SetPoint("RIGHT", row, "RIGHT", -14, 3)
-	dd:SetWidth(160)
+
+	-- Boxed look so the dropdown reads as an interactive control rather than
+	-- plain text.
+	local bg = CreateFrame("Frame", nil, dd, "BackdropTemplate")
+	bg:SetAllPoints(dd)
+	bg:SetFrameLevel(dd:GetFrameLevel() - 1)
+	bg:SetBackdrop({
+		bgFile = "Interface\\Buttons\\WHITE8X8",
+		edgeFile = "Interface\\Buttons\\WHITE8X8",
+		tile = false,
+		edgeSize = 1,
+		insets = { left = 1, right = 1, top = 1, bottom = 1 },
+	})
+	bg:SetBackdropColor(0, 0, 0, 0.35)
+	bg:SetBackdropBorderColor(0, 0, 0, 1)
+
+	local text = dd.Text
+	if text then
+		text:SetFontObject(GameFontNormal)
+		text:SetTextColor(1, 1, 1, 1)
+	end
+
+	dd.Button:SetHighlightTexture("Interface\\Buttons\\WHITE8X8", "ADD")
+	dd.Button:GetHighlightTexture():SetVertexColor(1, 1, 1, 0.15)
+	dd.Button:SetPushedTexture("Interface\\Buttons\\WHITE8X8")
+	dd.Button:GetPushedTexture():SetVertexColor(0, 0, 0, 0.5)
 
 	UIDropDownMenu_Initialize(dd, function(self, level)
 		local values = valueBuilder() or {}
@@ -240,6 +265,7 @@ local function CreateDropdown(row, valueBuilder, get, set, disabledFn)
 			local values = valueBuilder() or {}
 			local current = get()
 			UIDropDownMenu_SetText(dd, values[current] or tostring(current or ""))
+			UIDropDownMenu_MatchTextWidth(dd, 50)
 		end,
 		SetDisabled = function(_, disabled)
 			dd:SetAlpha(disabled and 0.4 or 1)
@@ -1109,6 +1135,28 @@ local function BuildGeneral(parent)
 			end
 		)
 	end)
+
+	layout:Space()
+	layout:Row(L["Bar Style"], function(row)
+		CreateDropdown(
+			row,
+			function()
+				return {
+					auto = L["Auto"],
+					grid = L["Native"],
+					flat = L["Flat"],
+				}
+			end,
+			function()
+				return GetDB().barStyle or "auto"
+			end,
+			function(value)
+				GetDB().barStyle = value
+				EIB:ApplyBarStyle()
+			end
+		)
+	end)
+	layout:Text(L["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."])
 
 	parent:SetHeight(math.abs(layout.y) + 20)
 end

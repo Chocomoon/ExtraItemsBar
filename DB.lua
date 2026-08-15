@@ -48,6 +48,7 @@ EIB.dbDefault = {
 	extraItemsBar = {
 		enable = true,
 		noQuantumItems = false,
+		barStyle = "auto",
 		customList = {},
 		blackList = {
 			[183040] = true, -- Frosted Mindbender's Loop

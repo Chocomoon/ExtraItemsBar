@@ -36,6 +36,7 @@ local InCombatLockdown = InCombatLockdown
 local RegisterStateDriver = RegisterStateDriver
 local UnregisterStateDriver = UnregisterStateDriver
 
+local C_AddOns_IsAddOnLoaded = C_AddOns.IsAddOnLoaded
 local C_Item_GetItemCooldown = C_Item.GetItemCooldown
 local C_Item_GetItemCount = C_Item.GetItemCount
 local C_Item_GetItemInfoInstant = C_Item.GetItemInfoInstant
@@ -188,16 +189,141 @@ function EB:GetBindingKeyText(key)
 	return FixKeybindText(keybind)
 end
 
+-- ---------------------------------------------------------------------------
+-- Bar styles
+-- "grid" keeps the native action bar look, "flat" is a minimal style that
+-- blends in with UIs that skin the action bars (ElvUI, NDui, EllesmereUI, ...).
+-- ---------------------------------------------------------------------------
+
+-- Known addons that replace/skin the native action bars.
+EIB.SkinAddons = {
+	"ElvUI",
+	"EllesmereUI",
+	"EllesmereUIActionBars",
+	"NDui",
+	"KkthnxUI",
+	"ToxiUI",
+}
+
+local styleConfig = {
+	grid = {
+		button = {
+			backdrop = {
+				bgFile = "Interface\\Buttons\\WHITE8X8",
+				edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+				tile = true,
+				tileSize = 16,
+				edgeSize = 16,
+				insets = { left = 3, right = 3, top = 3, bottom = 3 },
+			},
+			bgColor = { 0, 0, 0, 0.8 },
+			borderColor = { 0.6, 0.6, 0.6, 1 },
+			highlightColor = { 0.9, 0.9, 0.9, 0.25 },
+			pushedColor = { 0, 0, 0, 0.6 },
+		},
+		bar = {
+			backdrop = {
+				bgFile = "Interface\\Buttons\\WHITE8X8",
+				edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+				tile = true,
+				tileSize = 16,
+				edgeSize = 16,
+				insets = { left = 3, right = 3, top = 3, bottom = 3 },
+			},
+			bgColor = { 0, 0, 0, 0.8 },
+			bgColorTransparent = { 0, 0, 0, 0.25 },
+			borderColor = { 0.6, 0.6, 0.6, 1 },
+		},
+	},
+	flat = {
+		button = {
+			backdrop = {
+				bgFile = "Interface\\Buttons\\WHITE8X8",
+				tile = false,
+				edgeSize = 0,
+			},
+			bgColor = { 0, 0, 0, 0 },
+			borderColor = { 0, 0, 0, 1 },
+			highlightColor = { 1, 1, 1, 0.15 },
+			pushedColor = { 0, 0, 0, 0.5 },
+		},
+		bar = {
+			backdrop = {
+				bgFile = "Interface\\Buttons\\WHITE8X8",
+				edgeFile = "Interface\\Buttons\\WHITE8X8",
+				tile = false,
+				edgeSize = 1,
+				insets = { left = 1, right = 1, top = 1, bottom = 1 },
+			},
+			bgColor = { 0, 0, 0, 0.8 },
+			bgColorTransparent = { 0, 0, 0, 0 },
+			borderColor = { 0, 0, 0, 1 },
+		},
+	},
+}
+
+---Resolve the effective bar style. "auto" keeps the native grid look when the
+---action bars are untouched and switches to the flat style when a UI addon
+---skins them; a manual "grid"/"flat" choice always wins.
+function EIB:GetBarStyle()
+	local style = self:GetItemDB().barStyle or "auto"
+	if style ~= "auto" then
+		return style
+	end
+
+	for i = 1, #EIB.SkinAddons do
+		if C_AddOns_IsAddOnLoaded(EIB.SkinAddons[i]) then
+			return "flat"
+		end
+	end
+
+	return "grid"
+end
+
 -- Replacement for E.ActionBars:StyleButton
 function EIB:StyleButton(button)
+	local cfg = styleConfig[EIB:GetBarStyle()].button
 	button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
 	local highlight = button:GetHighlightTexture()
 	highlight:SetBlendMode("ADD")
-	highlight:SetVertexColor(0.9, 0.9, 0.9, 0.25)
+	highlight:SetVertexColor(unpack(cfg.highlightColor))
 
 	button:SetPushedTexture("Interface\\Buttons\\WHITE8X8")
 	local pushed = button:GetPushedTexture()
-	pushed:SetVertexColor(0, 0, 0, 0.6)
+	pushed:SetVertexColor(unpack(cfg.pushedColor))
+end
+
+-- Apply the current bar style to an existing button backdrop without touching
+-- the border color, which is driven by item data (see SetUpButton).
+function EIB:StyleButtonBackdrop(button)
+	local cfg = styleConfig[EIB:GetBarStyle()].button
+	button:SetBackdrop(cfg.backdrop)
+	button:SetBackdropColor(unpack(cfg.bgColor))
+
+	local iconInset = EIB:GetBarStyle() == "flat" and 0 or 1
+	if button.tex then
+		button.tex:ClearAllPoints()
+		button.tex:SetPoint("TOPLEFT", button, "TOPLEFT", iconInset, -iconInset)
+		button.tex:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -iconInset, iconInset)
+	end
+
+	local highlight = button:GetHighlightTexture()
+	if highlight then
+		highlight:SetVertexColor(unpack(cfg.highlightColor))
+	end
+
+	local pushed = button:GetPushedTexture()
+	if pushed then
+		pushed:SetVertexColor(unpack(cfg.pushedColor))
+	end
+end
+
+-- Apply the current bar style to a backdrop frame (bar or custom frame).
+function EIB:StyleBackdrop(backdrop, style)
+	local cfg = styleConfig[EIB:GetBarStyle()].bar
+	backdrop:SetBackdrop(cfg.backdrop)
+	backdrop:SetBackdropColor(unpack(style == "Transparent" and cfg.bgColorTransparent or cfg.bgColor))
+	backdrop:SetBackdropBorderColor(unpack(cfg.borderColor))
 end
 
 -- Replacement for E:CreateBackdrop
@@ -210,16 +336,7 @@ function EIB:CreateBackdrop(frame, style)
 	backdrop:SetAllPoints(frame)
 	backdrop:SetFrameStrata("BACKGROUND")
 	backdrop:SetFrameLevel(frame:GetFrameLevel() - 1)
-	backdrop:SetBackdrop({
-		bgFile = "Interface\\Buttons\\WHITE8X8",
-		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-		tile = true,
-		tileSize = 16,
-		edgeSize = 16,
-		insets = { left = 3, right = 3, top = 3, bottom = 3 },
-	})
-	backdrop:SetBackdropColor(0, 0, 0, style == "Transparent" and 0.25 or 0.8)
-	backdrop:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+	EIB:StyleBackdrop(backdrop, style)
 
 	frame.backdrop = backdrop
 	return backdrop
@@ -233,20 +350,13 @@ function EB:CreateButton(name, barDB)
 	button:EnableMouse(false)
 	button:RegisterForClicks(EIB.UseKeyDown and "AnyDown" or "AnyUp")
 
-	button:SetBackdrop({
-		bgFile = "Interface\\Buttons\\WHITE8X8",
-		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-		tile = true,
-		tileSize = 16,
-		edgeSize = 16,
-		insets = { left = 3, right = 3, top = 3, bottom = 3 },
-	})
-	button:SetBackdropColor(0, 0, 0, 0.8)
-	button:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+	EIB:StyleButtonBackdrop(button)
+	button:SetBackdropBorderColor(unpack(styleConfig[EIB:GetBarStyle()].button.borderColor))
 
 	local tex = button:CreateTexture(nil, "OVERLAY", nil)
-	tex:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
-	tex:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+	local iconInset = EIB:GetBarStyle() == "flat" and 0 or 1
+	tex:SetPoint("TOPLEFT", button, "TOPLEFT", iconInset, -iconInset)
+	tex:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -iconInset, iconInset)
 	tex:SetTexCoord(EIB.TexCoords[1], EIB.TexCoords[2], EIB.TexCoords[3], EIB.TexCoords[4])
 
 	local qualityTier = button:CreateFontString(nil, "OVERLAY")
@@ -675,22 +785,31 @@ function EB:UpdateBar(id)
 		end
 	end
 
+	-- In the flat style the icons form a tight grid flush against the bar's
+	-- thin border, so the user-configurable spacing values do not apply.
+	local spacing = barDB.spacing
+	local backdropSpacing = barDB.backdropSpacing
+	if EIB:GetBarStyle() == "flat" then
+		spacing = 0
+		backdropSpacing = 1
+	end
+
 	-- Resize bar
 	local numRows = ceil((buttonID - 1) / barDB.buttonsPerRow)
 	local numCols = buttonID > barDB.buttonsPerRow and barDB.buttonsPerRow or (buttonID - 1)
-	local newBarWidth = 2 * barDB.backdropSpacing + numCols * barDB.buttonWidth + (numCols - 1) * barDB.spacing
-	local newBarHeight = 2 * barDB.backdropSpacing + numRows * barDB.buttonHeight + (numRows - 1) * barDB.spacing
+	local newBarWidth = 2 * backdropSpacing + numCols * barDB.buttonWidth + (numCols - 1) * spacing
+	local newBarHeight = 2 * backdropSpacing + numRows * barDB.buttonHeight + (numRows - 1) * spacing
 	bar:SetSize(newBarWidth, newBarHeight)
 
 	-- Update anchor size
 	local numMoverRows = ceil(barDB.numButtons / barDB.buttonsPerRow)
 	local numMoverCols = barDB.buttonsPerRow
-	local newMoverWidth = 2 * barDB.backdropSpacing
+	local newMoverWidth = 2 * backdropSpacing
 		+ numMoverCols * barDB.buttonWidth
-		+ (numMoverCols - 1) * barDB.spacing
-	local newMoverHeight = 2 * barDB.backdropSpacing
+		+ (numMoverCols - 1) * spacing
+	local newMoverHeight = 2 * backdropSpacing
 		+ numMoverRows * barDB.buttonHeight
-		+ (numMoverRows - 1) * barDB.spacing
+		+ (numMoverRows - 1) * spacing
 	bar:GetParent():SetSize(newMoverWidth, newMoverHeight)
 
 	bar:ClearAllPoints()
@@ -722,27 +841,27 @@ function EB:UpdateBar(id)
 
 		if i == 1 then
 			if anchor == "TOPLEFT" then
-				button:SetPoint(anchor, bar, anchor, barDB.backdropSpacing, -barDB.backdropSpacing)
+				button:SetPoint(anchor, bar, anchor, backdropSpacing, -backdropSpacing)
 			elseif anchor == "TOPRIGHT" then
-				button:SetPoint(anchor, bar, anchor, -barDB.backdropSpacing, -barDB.backdropSpacing)
+				button:SetPoint(anchor, bar, anchor, -backdropSpacing, -backdropSpacing)
 			elseif anchor == "BOTTOMLEFT" then
-				button:SetPoint(anchor, bar, anchor, barDB.backdropSpacing, barDB.backdropSpacing)
+				button:SetPoint(anchor, bar, anchor, backdropSpacing, backdropSpacing)
 			elseif anchor == "BOTTOMRIGHT" then
-				button:SetPoint(anchor, bar, anchor, -barDB.backdropSpacing, barDB.backdropSpacing)
+				button:SetPoint(anchor, bar, anchor, -backdropSpacing, backdropSpacing)
 			end
 		elseif i <= barDB.buttonsPerRow then
 			local nearest = bar.buttons[i - 1]
 			if anchor == "TOPLEFT" or anchor == "BOTTOMLEFT" then
-				button:SetPoint("LEFT", nearest, "RIGHT", barDB.spacing, 0)
+				button:SetPoint("LEFT", nearest, "RIGHT", spacing, 0)
 			else
-				button:SetPoint("RIGHT", nearest, "LEFT", -barDB.spacing, 0)
+				button:SetPoint("RIGHT", nearest, "LEFT", -spacing, 0)
 			end
 		else
 			local nearest = bar.buttons[i - barDB.buttonsPerRow]
 			if anchor == "TOPLEFT" or anchor == "TOPRIGHT" then
-				button:SetPoint("TOP", nearest, "BOTTOM", 0, -barDB.spacing)
+				button:SetPoint("TOP", nearest, "BOTTOM", 0, -spacing)
 			else
-				button:SetPoint("BOTTOM", nearest, "TOP", 0, barDB.spacing)
+				button:SetPoint("BOTTOM", nearest, "TOP", 0, spacing)
 			end
 		end
 
@@ -857,6 +976,32 @@ function EB:CreateAll()
 	end
 end
 
+function EB:ApplyBarStyle()
+	if not self.bars then
+		return
+	end
+
+	for i = 1, 5 do
+		local bar = self.bars[i]
+		if bar then
+			if bar.backdrop then
+				EIB:StyleBackdrop(bar.backdrop, "Transparent")
+			end
+
+			for j = 1, 12 do
+				local button = bar.buttons[j]
+				if button then
+					EIB:StyleButtonBackdrop(button)
+				end
+			end
+		end
+	end
+
+	if self.initialized then
+		self:UpdateBars()
+	end
+end
+
 function EB:UpdateBinding()
 	if not self.bars or not self.bars[1] then
 		return
@@ -932,3 +1077,4 @@ end
 
 EIB.Initialize = EB.Initialize
 EIB.ProfileUpdate = EB.ProfileUpdate
+EIB.ApplyBarStyle = EB.ApplyBarStyle

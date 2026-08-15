@@ -104,6 +104,11 @@ local defaultLocale = {
 	["Item is already in the list."] = "Item is already in the list.",
 	["Enter an item ID and press Enter or click Add."] = "Enter an item ID and press Enter or click Add.",
 	["%d items"] = "%d items",
+	["Bar Style"] = "Bar Style",
+	["Auto"] = "Auto",
+	["Native"] = "Native",
+	["Flat"] = "Flat",
+	["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."] = "Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept.",
 }
 
 local zhCNLocale = {
@@ -205,6 +210,11 @@ local zhCNLocale = {
 	["Item is already in the list."] = "该物品已在列表中。",
 	["Enter an item ID and press Enter or click Add."] = "输入物品ID后按回车或点击添加。",
 	["%d items"] = "%d 个物品",
+	["Bar Style"] = "物品条风格",
+	["Auto"] = "自动",
+	["Native"] = "原生",
+	["Flat"] = "扁平",
+	["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."] = "自动检测动作条是否被 UI 插件美化。若被美化则使用扁平简约风格，否则保留原生风格。",
 }
 
 local zhTWLocale = {
@@ -306,6 +316,11 @@ local zhTWLocale = {
 	["Item is already in the list."] = "此物品已在清單中。",
 	["Enter an item ID and press Enter or click Add."] = "輸入物品ID後按 Enter 或點擊新增。",
 	["%d items"] = "%d 個物品",
+	["Bar Style"] = "物品列風格",
+	["Auto"] = "自動",
+	["Native"] = "原生",
+	["Flat"] = "扁平",
+	["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."] = "自動偵測動作列是否被 UI 插件美化。若被美化則使用扁平簡約風格，否則保留原生風格。",
 }
 
 local translations = defaultLocale
