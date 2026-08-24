@@ -120,9 +120,13 @@ local function Track(widget, disabledFn)
 	return widget
 end
 
-local function CreateCheckbox(row, get, set, disabledFn)
+	local function CreateCheckbox(row, get, set, disabledFn, left)
 	local cb = CreateFrame("CheckButton", nil, row, "InterfaceOptionsCheckButtonTemplate")
-	cb:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+	if left then
+		cb:SetPoint("LEFT", row, "LEFT", left, 0)
+	else
+		cb:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+	end
 
 	local widget = {
 		refresh = function()
@@ -214,24 +218,20 @@ local function CreateEditBox(row, get, set, disabledFn, tooltip)
 	return widget
 end
 
-local function CreateDropdown(row, valueBuilder, get, set, disabledFn)
+local function CreateDropdown(row, valueBuilder, get, set, disabledFn, left)
 	local dd = CreateFrame("Frame", nil, row, "UIDropDownMenuTemplate")
-	dd:SetPoint("RIGHT", row, "RIGHT", -14, 3)
+	if left then
+		dd:SetPoint("LEFT", row, "LEFT", left, 0)
+	else
+		dd:SetPoint("RIGHT", row, "RIGHT", -14, 0)
+	end
 
-	-- Boxed look so the dropdown reads as an interactive control rather than
-	-- plain text.
-	local bg = CreateFrame("Frame", nil, dd, "BackdropTemplate")
-	bg:SetAllPoints(dd)
-	bg:SetFrameLevel(dd:GetFrameLevel() - 1)
-	bg:SetBackdrop({
-		bgFile = "Interface\\Buttons\\WHITE8X8",
-		edgeFile = "Interface\\Buttons\\WHITE8X8",
-		tile = false,
-		edgeSize = 1,
-		insets = { left = 1, right = 1, top = 1, bottom = 1 },
-	})
-	bg:SetBackdropColor(0, 0, 0, 0.35)
-	bg:SetBackdropBorderColor(0, 0, 0, 1)
+	-- Text + arrow only, matching the native UIDropDownMenu look. The template's
+	-- own Left/Middle/Right chain draws a fixed 165px box that ignores
+	-- dd:SetWidth, so hide it.
+	dd.Left:Hide()
+	dd.Middle:Hide()
+	dd.Right:Hide()
 
 	local text = dd.Text
 	if text then
@@ -259,6 +259,12 @@ local function CreateDropdown(row, valueBuilder, get, set, disabledFn)
 			UIDropDownMenu_AddButton(info, level)
 		end
 	end, "MENU")
+
+	-- The template anchors the opened menu to its hidden "Left" texture, which
+	-- floats ~81px below the control and reads as a detached tall black box.
+	-- Anchor the menu under the control with a small gap so it reads as a
+	-- separate dropdown list.
+	UIDropDownMenu_SetAnchor(dd, 0, 6, "TOPLEFT", dd, "BOTTOMLEFT")
 
 	local widget = {
 		refresh = function()
@@ -480,12 +486,17 @@ local function GetItemLabel(itemID)
 	if cached then
 		return cached
 	end
-	async.WithItemID(itemID, function(item)
-		if item and item:GetItemName() then
+
+	local instance = async.WithItemID(itemID, function(item)
+		if item and item:GetItemName() and item:GetItemName() ~= "" then
 			itemLabels[itemID] = GetIconString(item:GetItemIcon(), 14, 18) .. item:GetItemName()
 			Refresh()
 		end
 	end)
+	if instance and instance:GetItemName() and instance:GetItemName() ~= "" then
+		return itemLabels[itemID] or tostring(itemID)
+	end
+
 	return tostring(itemID)
 end
 
@@ -634,7 +645,7 @@ local function NewLayout(parent, compact)
 		return fs
 	end
 
-	function layout:Row(label, controlBuilder, height)
+	function layout:Row(label, controlBuilder, height, controlX)
 		height = height or (compact and 24 or 28)
 		local row = CreateFrame("Frame", nil, parent)
 		row:SetPoint("TOPLEFT", parent, "TOPLEFT", 10, self.y)
@@ -643,7 +654,11 @@ local function NewLayout(parent, compact)
 		if label then
 			local fs = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 			fs:SetPoint("LEFT", row, "LEFT", 4, 0)
-			fs:SetPoint("RIGHT", row, "RIGHT", -180, 0)
+			if controlX then
+				fs:SetPoint("RIGHT", row, "LEFT", controlX - 8, 0)
+			else
+				fs:SetPoint("RIGHT", row, "RIGHT", -180, 0)
+			end
 			fs:SetText(label)
 			fs:SetJustifyH("LEFT")
 			fs:SetWordWrap(false)
@@ -981,6 +996,22 @@ local function BuildBarSection(layout)
 			masterDisabled
 		)
 	end)
+	layout:Row(L["Snap Spacing"], function(row)
+		CreateSlider(
+			row,
+			function()
+				return barDB().snapSpacing or barDB().spacing
+			end,
+			function(value)
+				barDB().snapSpacing = value
+			end,
+			0,
+			30,
+			1,
+			0,
+			masterDisabled
+		)
+	end)
 	layout:Row(L["Buttons"], function(row)
 		CreateSlider(
 			row,
@@ -1145,6 +1176,15 @@ local function BuildGeneral(parent)
 
 	layout:Header(L["Extra Items Bar"])
 
+	local measure = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	measure:Hide()
+	local maxLabelWidth = 0
+	for _, label in ipairs({ L["Enable"], L["No Quantum Items"], L["Bar Style"] }) do
+		measure:SetText(label)
+		maxLabelWidth = math.max(maxLabelWidth, measure:GetUnboundedStringWidth())
+	end
+	local controlX = math.ceil(maxLabelWidth + 32)
+
 	layout:Row(L["Enable"], function(row)
 		CreateCheckbox(
 			row,
@@ -1154,9 +1194,11 @@ local function BuildGeneral(parent)
 			function(value)
 				GetDB().enable = value
 				EIB:ProfileUpdate()
-			end
+			end,
+			nil,
+			controlX
 		)
-	end)
+	end, nil, controlX)
 
 	layout:Space()
 	layout:Row(L["No Quantum Items"], function(row)
@@ -1171,9 +1213,10 @@ local function BuildGeneral(parent)
 			end,
 			function()
 				return not GetDB().enable
-			end
+			end,
+			controlX
 		)
-	end)
+	end, nil, controlX)
 
 	layout:Space()
 	layout:Row(L["Bar Style"], function(row)
@@ -1192,9 +1235,11 @@ local function BuildGeneral(parent)
 			function(value)
 				GetDB().barStyle = value
 				EIB:ApplyBarStyle()
-			end
+			end,
+			nil,
+			controlX
 		)
-	end)
+	end, nil, controlX)
 	layout:Text(L["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."])
 
 	parent:SetHeight(math.abs(layout.y) + 20)

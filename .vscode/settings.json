@@ -26,6 +26,7 @@
         "UIDropDownMenu_CreateInfo",
         "UIDropDownMenu_Initialize",
         "UIDropDownMenu_SetText",
-        "UIDropDownMenu_MatchTextWidth"
+        "UIDropDownMenu_MatchTextWidth",
+        "UIDropDownMenu_SetAnchor"
     ]
 }

@@ -37,7 +37,7 @@ local function NormalizeSavedPosition(anchor)
 	end
 	return {
 		point = "BOTTOMLEFT",
-		relativeTo = "UIParent",
+		relativeTo = "WorldFrame",
 		relativePoint = "BOTTOMLEFT",
 		xOfs = left / uw,
 		yOfs = bottom / uh,
@@ -55,11 +55,11 @@ local function ApplySavedPosition(anchor, key, saved)
 	local uw, uh = _G.UIParent:GetWidth(), _G.UIParent:GetHeight()
 
 	if saved.normalized and uw and uh then
-		anchor:SetPoint("BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", saved.xOfs * uw, saved.yOfs * uh)
+		anchor:SetPoint("BOTTOMLEFT", _G.WorldFrame, "BOTTOMLEFT", saved.xOfs * uw, saved.yOfs * uh)
 		return
 	end
 
-	local relative = saved.relativeTo and _G[saved.relativeTo] or _G.UIParent
+	local relative = saved.relativeTo and _G[saved.relativeTo] or _G.WorldFrame
 	anchor:SetPoint(saved.point, relative, saved.relativePoint, saved.xOfs, saved.yOfs)
 
 	local normalized = NormalizeSavedPosition(anchor)
@@ -68,7 +68,7 @@ local function ApplySavedPosition(anchor, key, saved)
 		EIB.db.profile.position = position
 		position[key] = normalized
 		anchor:ClearAllPoints()
-		anchor:SetPoint("BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", normalized.xOfs * uw, normalized.yOfs * uh)
+		anchor:SetPoint("BOTTOMLEFT", _G.WorldFrame, "BOTTOMLEFT", normalized.xOfs * uw, normalized.yOfs * uh)
 	end
 end
 
@@ -83,8 +83,13 @@ local function GetCursorUIPosition()
 	return x / scale, y / scale
 end
 
----Snap an anchor's desired bottom-left corner to nearby bar edges so bars can
----be aligned/stacked easily. Holding Ctrl temporarily disables snapping.
+---Snap an anchor's desired bottom-left corner to nearby visible bar edges so
+---bars can be aligned/stacked easily. Snapping uses each mover's actual bar
+---frame (anchor.bar) rather than the anchor, so the snap gap is measured
+---between visible bars even when the anchor area is larger than the bar.
+---The gap applied for side-by-side/stacked placements comes from the dragged
+---bar's snapSpacing (falls back to its button spacing). Holding Ctrl
+---temporarily disables snapping.
 ---@param anchor Frame
 ---@param x number
 ---@param y number
@@ -95,28 +100,40 @@ local function SnapXY(anchor, x, y)
 		return x, y
 	end
 
-	local w, h = anchor:GetWidth(), anchor:GetHeight()
+	local bar = anchor.bar or anchor
+	local w, h = bar:GetWidth(), bar:GetHeight()
 	if not w or not h or w <= 0 or h <= 0 then
 		return x, y
 	end
 
-	local bestX, bestY, bestDX, bestDY = x, y, snapThreshold, snapThreshold
+	local barDB = bar.id and EIB:GetItemDB()["bar" .. bar.id]
+	local gap = barDB and (barDB.snapSpacing or barDB.spacing) or 0
+
+	-- The bar's fixed offset within its anchor (constant while dragging)
+	local bx = (bar:GetLeft() or 0) - (anchor:GetLeft() or 0)
+	local by = (bar:GetBottom() or 0) - (anchor:GetBottom() or 0)
+
+	local ownLeft = x + bx
+	local ownBottom = y + by
+
+	local bestX, bestY, bestDX, bestDY = ownLeft, ownBottom, snapThreshold, snapThreshold
 	for _, mover in pairs(EIB.Move.movers) do
 		local other = mover.anchor
-		if other and other ~= anchor then
-			local ol, ob, oright, ot = other:GetLeft(), other:GetBottom(), other:GetRight(), other:GetTop()
+		local otherBar = other and (other.bar or other)
+		if otherBar and otherBar ~= bar then
+			local ol, ob, oright, ot = otherBar:GetLeft(), otherBar:GetBottom(), otherBar:GetRight(), otherBar:GetTop()
 			if ol and ob then
-				local xs = { ol, oright, ol - w, oright - w }
+				local xs = { ol, oright + gap, ol - w - gap, oright - w }
 				for i = 1, 4 do
-					local dx = math.abs(xs[i] - x)
+					local dx = math.abs(xs[i] - ownLeft)
 					if dx < bestDX then
 						bestDX = dx
 						bestX = xs[i]
 					end
 				end
-				local ys = { ob, ot, ob - h, ot - h }
+				local ys = { ob, ot + gap, ob - h - gap, ot - h }
 				for i = 1, 4 do
-					local dy = math.abs(ys[i] - y)
+					local dy = math.abs(ys[i] - ownBottom)
 					if dy < bestDY then
 						bestDY = dy
 						bestY = ys[i]
@@ -125,7 +142,7 @@ local function SnapXY(anchor, x, y)
 			end
 		end
 	end
-	return bestX, bestY
+	return bestX - bx, bestY - by
 end
 
 ---Per-frame drag update: move the anchor to the cursor and snap to nearby bars.
@@ -136,7 +153,7 @@ local function DragUpdate()
 	end
 	local cx, cy = GetCursorUIPosition()
 	local x, y = SnapXY(anchor, cx - EIB.Move.grabX, cy - EIB.Move.grabY)
-	anchor:SetPoint("BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", x, y)
+	anchor:SetPoint("BOTTOMLEFT", _G.WorldFrame, "BOTTOMLEFT", x, y)
 end
 
 ---Create a draggable mover for an anchor frame.
@@ -156,11 +173,11 @@ function EIB.Move:CreateMover(anchor, key, text, defaultPoint, relativeTo, relat
 	if saved then
 		ApplySavedPosition(anchor, key, saved)
 	else
-		anchor:SetPoint(defaultPoint, relativeTo or _G.UIParent, relativePoint or defaultPoint, xOfs or 0, yOfs or 0)
+		anchor:SetPoint(defaultPoint, relativeTo or _G.WorldFrame, relativePoint or defaultPoint, xOfs or 0, yOfs or 0)
 	end
 
 	-- Transparent drag handle shown on top only in move mode
-	local handle = CreateFrame("Button", key .. "Handle", anchor, "BackdropTemplate")
+	local handle = CreateFrame("Button", key .. "Handle", UIParent, "BackdropTemplate")
 	handle:SetAllPoints(anchor)
 	handle:SetFrameStrata("TOOLTIP")
 	handle:SetBackdrop({
@@ -175,7 +192,7 @@ function EIB.Move:CreateMover(anchor, key, text, defaultPoint, relativeTo, relat
 	})
 	handle:EnableMouse(false)
 	handle:SetScript("OnMouseDown", function()
-		if EIB.Move.dragAnchor then
+		if EIB.Move.dragAnchor or InCombatLockdown() then
 			return
 		end
 		local cx, cy = GetCursorUIPosition()
@@ -195,7 +212,7 @@ function EIB.Move:CreateMover(anchor, key, text, defaultPoint, relativeTo, relat
 			local point, relativeTo, relativePoint, xOfs, yOfs = anchor:GetPoint()
 			saved = {
 				point = point,
-				relativeTo = relativeTo and relativeTo:GetName() or "UIParent",
+				relativeTo = relativeTo and relativeTo:GetName() or "WorldFrame",
 				relativePoint = relativePoint,
 				xOfs = xOfs,
 				yOfs = yOfs,
@@ -287,13 +304,13 @@ function EIB.Move:ResetPosition()
 			if defaults then
 				mover.anchor:SetPoint(
 					defaults.defaultPoint,
-					defaults.relativeTo or _G.UIParent,
+					defaults.relativeTo or _G.WorldFrame,
 					defaults.relativePoint or defaults.defaultPoint,
 					defaults.xOfs or 0,
 					defaults.yOfs or 0
 				)
 			else
-				mover.anchor:SetPoint("CENTER", _G.UIParent, "CENTER", 0, 0)
+				mover.anchor:SetPoint("CENTER", _G.WorldFrame, "CENTER", 0, 0)
 			end
 		end
 	end

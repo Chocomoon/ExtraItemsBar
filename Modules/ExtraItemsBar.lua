@@ -673,27 +673,22 @@ function EB:CreateBar(id)
 		return
 	end
 
-	local anchor = CreateFrame("Frame", "WTExtraItemsBar" .. id .. "Anchor", _G.UIParent)
-	anchor:SetClampedToScreen(true)
-	anchor:SetSize(200, 40)
+	-- Bar (also the mover frame)
+	local bar = CreateFrame("Frame", "WTExtraItemsBar" .. id, _G.UIParent, "SecureHandlerStateTemplate")
+	bar.id = id
+	bar:SetClampedToScreen(true)
+	bar:SetSize(200, 40)
 	EIB.Move:CreateMover(
-		anchor,
+		bar,
 		"WTExtraItemsBar" .. id .. "Mover",
 		L["Extra Items Bar"] .. " " .. id,
 		"BOTTOMLEFT",
-		_G.UIParent,
+		_G.WorldFrame,
 		"LEFT",
 		5,
 		(id - 1) * 45
 	)
 
-	-- Bar
-	local bar = CreateFrame("Frame", "WTExtraItemsBar" .. id, _G.UIParent, "SecureHandlerStateTemplate")
-	bar.id = id
-	bar:ClearAllPoints()
-	bar:SetParent(anchor)
-	bar:SetPoint("CENTER", anchor, "CENTER", 0, 0)
-	bar:SetSize(200, 40)
 	EIB:CreateBackdrop(bar, "Transparent")
 	bar:SetFrameStrata("LOW")
 
@@ -793,13 +788,12 @@ function EB:UpdateBar(id)
 			bar.registeredVisibility = nil
 		end
 		bar:Hide()
-		bar:GetParent():Hide()
 		return
 	end
 
 	local buttonID = 1
 
-	bar:GetParent():Show()
+	bar:Show()
 
 	local function addNormalButton(itemID)
 		if self:ValidateItem(itemID) and buttonID <= barDB.numButtons then
@@ -860,24 +854,13 @@ function EB:UpdateBar(id)
 	local numCols = buttonID > barDB.buttonsPerRow and barDB.buttonsPerRow or (buttonID - 1)
 	local newBarWidth = 2 * backdropSpacing + numCols * barDB.buttonWidth + (numCols - 1) * spacing
 	local newBarHeight = 2 * backdropSpacing + numRows * barDB.buttonHeight + (numRows - 1) * spacing
-	bar:SetSize(newBarWidth, newBarHeight)
-
-	-- Update anchor size
-	local numMoverRows = ceil(barDB.numButtons / barDB.buttonsPerRow)
-	local numMoverCols = barDB.buttonsPerRow
-	local newMoverWidth = 2 * backdropSpacing
-		+ numMoverCols * barDB.buttonWidth
-		+ (numMoverCols - 1) * spacing
-	local newMoverHeight = 2 * backdropSpacing
-		+ numMoverRows * barDB.buttonHeight
-		+ (numMoverRows - 1) * spacing
-	bar:GetParent():SetSize(newMoverWidth, newMoverHeight)
-
-	bar:ClearAllPoints()
-	bar:SetPoint(barDB.anchor)
+	local emptyWidth = 2 * backdropSpacing + 5 * barDB.buttonWidth + 4 * spacing
+	bar:SetSize(math.max(newBarWidth, emptyWidth), newBarHeight)
 
 	-- Hide buttons not in use
 	if buttonID == 1 then
+		local emptyWidth = 2 * backdropSpacing + 5 * barDB.buttonWidth + 4 * spacing
+		bar:SetSize(math.max(newBarWidth, emptyWidth), 2 * backdropSpacing + barDB.buttonHeight)
 		if bar.register then
 			UnregisterStateDriver(bar, "visibility")
 			bar.register = false
