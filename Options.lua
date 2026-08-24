@@ -3,7 +3,13 @@
 -- ElvUI_WindTools Options/Item.lua (extraItemsBar section). See NOTICE.txt.
 
 local EIB = _G.EIB
-local L = EIB.L
+
+local L = setmetatable({}, {
+	__index = function(_, key)
+		return EIB.L[key]
+	end
+})
+
 local async = EIB.Async
 
 local _G = _G
@@ -464,12 +470,12 @@ local outlineValues = {
 	NONE = L["None"],
 	OUTLINE = L["Outline"],
 	THICKOUTLINE = L["Thick"],
-	SHADOW = L["Shadow"],
-	SHADOWOUTLINE = L["Shadow Outline"],
-	SHADOWTHICKOUTLINE = L["Shadow Thick"],
-	MONOCHROME = L["Mono"],
-	MONOCHROMEOUTLINE = L["Mono Outline"],
-	MONOCHROMETHICKOUTLINE = L["Mono Thick"],
+	SHADOW = L["FONT_SHADOW"],
+	SHADOWOUTLINE = L["FONT_SHADOW_OUTLINE"],
+	SHADOWTHICKOUTLINE = L["FONT_SHADOW_THICK"],
+	MONOCHROME = L["FONT_MONO"],
+	MONOCHROMEOUTLINE = L["FONT_MONO_OUTLINE"],
+	MONOCHROMETHICKOUTLINE = L["FONT_MONO_THICK"],
 }
 
 local anchorValues = {

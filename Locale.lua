@@ -111,18 +111,22 @@ local defaultLocale = {
 	["Native"] = "Native",
 	["Flat"] = "Flat",
 	["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."] = "Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept.",
-	["Shadow"] = "Shadow",
-	["Shadow Outline"] = "Shadow Outline",
-	["Shadow Thick"] = "Shadow Thick",
-	["Mono"] = "Mono",
-	["Mono Outline"] = "Mono Outline",
-	["Mono Thick"] = "Mono Thick",
-	["/eib - open options"] = "/eib - open options",
-	["/eib unlock - toggle drag mode"] = "/eib unlock - toggle drag mode",
-	["/eib reset - reset bar positions"] = "/eib reset - reset bar positions",
-	["Drag mode enabled. Drag the yellow frames and click again to lock."] = "Drag mode enabled. Drag the yellow frames and click again to lock.",
-	["Drag mode disabled."] = "Drag mode disabled.",
-	["Positions reset."] = "Positions reset.",
+	["FONT_SHADOW"] = "Shadow",
+	["FONT_SHADOW_OUTLINE"] = "Shadow Outline",
+	["FONT_SHADOW_THICK"] = "Shadow Thick",
+	["FONT_MONO"] = "Mono",
+	["FONT_MONO_OUTLINE"] = "Mono Outline",
+	["FONT_MONO_THICK"] = "Mono Thick",
+	["SLASH_OPEN"] = "/eib - open options",
+	["SLASH_UNLOCK"] = "/eib unlock - toggle drag mode",
+	["SLASH_RESET"] = "/eib reset - reset bar positions",
+	["DRAG_MODE_ENABLED"] = "Drag mode enabled. Drag the yellow frames and click again to lock.",
+	["DRAG_MODE_DISABLED"] = "Drag mode disabled.",
+	["POSITIONS_RESET"] = "Positions reset.",
+	["TOPLEFT"] = "Top Left",
+	["TOPRIGHT"] = "Top Right",
+	["BOTTOMLEFT"] = "Bottom Left",
+	["BOTTOMRIGHT"] = "Bottom Right",
 }
 
 local zhCNLocale = {
@@ -231,18 +235,22 @@ local zhCNLocale = {
 	["Native"] = "原生",
 	["Flat"] = "扁平",
 	["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."] = "自动检测动作条是否被 UI 插件美化。若被美化则使用扁平简约风格，否则保留原生风格。",
-	["Shadow"] = "阴影",
-	["Shadow Outline"] = "阴影描边",
-	["Shadow Thick"] = "阴影粗描边",
-	["Mono"] = "单色",
-	["Mono Outline"] = "单色描边",
-	["Mono Thick"] = "单色粗描边",
-	["/eib - open options"] = "/eib - 打开选项",
-	["/eib unlock - toggle drag mode"] = "/eib unlock - 切换拖拽模式",
-	["/eib reset - reset bar positions"] = "/eib reset - 重置条位置",
-	["Drag mode enabled. Drag the yellow frames and click again to lock."] = "拖拽模式已启用。拖动黄色框架，再次点击锁定。",
-	["Drag mode disabled."] = "拖拽模式已禁用。",
-	["Positions reset."] = "位置已重置。",
+	["FONT_SHADOW"] = "阴影",
+	["FONT_SHADOW_OUTLINE"] = "阴影描边",
+	["FONT_SHADOW_THICK"] = "阴影粗描边",
+	["FONT_MONO"] = "单色",
+	["FONT_MONO_OUTLINE"] = "单色描边",
+	["FONT_MONO_THICK"] = "单色粗描边",
+	["SLASH_OPEN"] = "/eib - 打开选项",
+	["SLASH_UNLOCK"] = "/eib unlock - 切换拖拽模式",
+	["SLASH_RESET"] = "/eib reset - 重置条位置",
+	["DRAG_MODE_ENABLED"] = "拖拽模式已启用。拖动黄色框架，再次点击锁定。",
+	["DRAG_MODE_DISABLED"] = "拖拽模式已禁用。",
+	["POSITIONS_RESET"] = "位置已重置。",
+	["TOPLEFT"] = "左上",
+	["TOPRIGHT"] = "右上",
+	["BOTTOMLEFT"] = "左下",
+	["BOTTOMRIGHT"] = "右下",
 }
 
 local zhTWLocale = {
@@ -351,26 +359,32 @@ local zhTWLocale = {
 	["Native"] = "原生",
 	["Flat"] = "扁平",
 	["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."] = "自動偵測動作列是否被 UI 插件美化。若被美化則使用扁平簡約風格，否則保留原生風格。",
-	["Shadow"] = "陰影",
-	["Shadow Outline"] = "陰影描邊",
-	["Shadow Thick"] = "陰影粗描邊",
-	["Mono"] = "單色",
-	["Mono Outline"] = "單色描邊",
-	["Mono Thick"] = "單色粗描邊",
-	["/eib - open options"] = "/eib - 開啟選項",
-	["/eib unlock - toggle drag mode"] = "/eib unlock - 切換拖曳模式",
-	["/eib reset - reset bar positions"] = "/eib reset - 重置列位置",
-	["Drag mode enabled. Drag the yellow frames and click again to lock."] = "拖曳模式已啟用。拖動黃色框架，再次點擊鎖定。",
-	["Drag mode disabled."] = "拖曳模式已停用。",
-	["Positions reset."] = "位置已重置。",
+	["FONT_SHADOW"] = "陰影",
+	["FONT_SHADOW_OUTLINE"] = "陰影描邊",
+	["FONT_SHADOW_THICK"] = "陰影粗描邊",
+	["FONT_MONO"] = "單色",
+	["FONT_MONO_OUTLINE"] = "單色描邊",
+	["FONT_MONO_THICK"] = "單色粗描邊",
+	["SLASH_OPEN"] = "/eib - 開啟選項",
+	["SLASH_UNLOCK"] = "/eib unlock - 切換拖曳模式",
+	["SLASH_RESET"] = "/eib reset - 重置列位置",
+	["DRAG_MODE_ENABLED"] = "拖曳模式已啟用。拖動黃色框架，再次點擊鎖定。",
+	["DRAG_MODE_DISABLED"] = "拖曳模式已停用。",
+	["POSITIONS_RESET"] = "位置已重置。",
+	["TOPLEFT"] = "左上",
+	["TOPRIGHT"] = "右上",
+	["BOTTOMLEFT"] = "左下",
+	["BOTTOMRIGHT"] = "右下",
 }
 
+local locale = GetLocale()
+local isChinese = locale:match("^zh")
 local translations = defaultLocale
-if locale == "zhCN" then
-	translations = zhCNLocale
-elseif locale == "zhTW" then
-	translations = zhTWLocale
+if isChinese then
+	translations = (locale == "zhTW") and zhTWLocale or zhCNLocale
 end
+
+print("|cff5385edExtraItemsBar|r: locale = " .. locale .. ", using " .. (translations == zhCNLocale and "zhCN" or translations == zhTWLocale and "zhTW" or "default"))
 
 EIB.L = setmetatable(translations, {
 	__index = function(_, key)
