@@ -464,12 +464,12 @@ local outlineValues = {
 	NONE = L["None"],
 	OUTLINE = L["Outline"],
 	THICKOUTLINE = L["Thick"],
-	SHADOW = "Shadow",
-	SHADOWOUTLINE = "Shadow Outline",
-	SHADOWTHICKOUTLINE = "Shadow Thick",
-	MONOCHROME = "Mono",
-	MONOCHROMEOUTLINE = "Mono Outline",
-	MONOCHROMETHICKOUTLINE = "Mono Thick",
+	SHADOW = L["Shadow"],
+	SHADOWOUTLINE = L["Shadow Outline"],
+	SHADOWTHICKOUTLINE = L["Shadow Thick"],
+	MONOCHROME = L["Mono"],
+	MONOCHROMEOUTLINE = L["Mono Outline"],
+	MONOCHROMETHICKOUTLINE = L["Mono Thick"],
 }
 
 local anchorValues = {

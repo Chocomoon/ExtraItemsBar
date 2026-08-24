@@ -111,6 +111,18 @@ local defaultLocale = {
 	["Native"] = "Native",
 	["Flat"] = "Flat",
 	["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."] = "Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept.",
+	["Shadow"] = "Shadow",
+	["Shadow Outline"] = "Shadow Outline",
+	["Shadow Thick"] = "Shadow Thick",
+	["Mono"] = "Mono",
+	["Mono Outline"] = "Mono Outline",
+	["Mono Thick"] = "Mono Thick",
+	["/eib - open options"] = "/eib - open options",
+	["/eib unlock - toggle drag mode"] = "/eib unlock - toggle drag mode",
+	["/eib reset - reset bar positions"] = "/eib reset - reset bar positions",
+	["Drag mode enabled. Drag the yellow frames and click again to lock."] = "Drag mode enabled. Drag the yellow frames and click again to lock.",
+	["Drag mode disabled."] = "Drag mode disabled.",
+	["Positions reset."] = "Positions reset.",
 }
 
 local zhCNLocale = {
@@ -219,6 +231,18 @@ local zhCNLocale = {
 	["Native"] = "原生",
 	["Flat"] = "扁平",
 	["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."] = "自动检测动作条是否被 UI 插件美化。若被美化则使用扁平简约风格，否则保留原生风格。",
+	["Shadow"] = "阴影",
+	["Shadow Outline"] = "阴影描边",
+	["Shadow Thick"] = "阴影粗描边",
+	["Mono"] = "单色",
+	["Mono Outline"] = "单色描边",
+	["Mono Thick"] = "单色粗描边",
+	["/eib - open options"] = "/eib - 打开选项",
+	["/eib unlock - toggle drag mode"] = "/eib unlock - 切换拖拽模式",
+	["/eib reset - reset bar positions"] = "/eib reset - 重置条位置",
+	["Drag mode enabled. Drag the yellow frames and click again to lock."] = "拖拽模式已启用。拖动黄色框架，再次点击锁定。",
+	["Drag mode disabled."] = "拖拽模式已禁用。",
+	["Positions reset."] = "位置已重置。",
 }
 
 local zhTWLocale = {
@@ -327,6 +351,18 @@ local zhTWLocale = {
 	["Native"] = "原生",
 	["Flat"] = "扁平",
 	["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."] = "自動偵測動作列是否被 UI 插件美化。若被美化則使用扁平簡約風格，否則保留原生風格。",
+	["Shadow"] = "陰影",
+	["Shadow Outline"] = "陰影描邊",
+	["Shadow Thick"] = "陰影粗描邊",
+	["Mono"] = "單色",
+	["Mono Outline"] = "單色描邊",
+	["Mono Thick"] = "單色粗描邊",
+	["/eib - open options"] = "/eib - 開啟選項",
+	["/eib unlock - toggle drag mode"] = "/eib unlock - 切換拖曳模式",
+	["/eib reset - reset bar positions"] = "/eib reset - 重置列位置",
+	["Drag mode enabled. Drag the yellow frames and click again to lock."] = "拖曳模式已啟用。拖動黃色框架，再次點擊鎖定。",
+	["Drag mode disabled."] = "拖曳模式已停用。",
+	["Positions reset."] = "位置已重置。",
 }
 
 local translations = defaultLocale

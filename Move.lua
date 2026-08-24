@@ -288,7 +288,7 @@ function EIB.Move:ToggleMoveMode()
 		end
 	end
 
-	EIB:Print(self.moveMode and "Drag mode enabled. Drag the yellow frames and click again to lock." or "Drag mode disabled.")
+	EIB:Print(self.moveMode and L["Drag mode enabled. Drag the yellow frames and click again to lock."] or L["Drag mode disabled."])
 end
 
 ---Reset all saved mover positions back to their defaults.
@@ -315,7 +315,7 @@ function EIB.Move:ResetPosition()
 		end
 	end
 
-	EIB:Print("Positions reset.")
+	EIB:Print(L["Positions reset."])
 end
 
 ---Remove all movers (cleanup on profile disable).

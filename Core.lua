@@ -117,9 +117,9 @@ SlashCmdList["EXTRAITEMSBAR"] = function(input)
 end
 
 function EIB:PrintHelp()
-	EIB:Print("/eib - open options")
-	EIB:Print("/eib unlock - toggle drag mode")
-	EIB:Print("/eib reset - reset bar positions")
+	EIB:Print(L["/eib - open options"])
+	EIB:Print(L["/eib unlock - toggle drag mode"])
+	EIB:Print(L["/eib reset - reset bar positions"])
 end
 
 function EIB:Print(...)
