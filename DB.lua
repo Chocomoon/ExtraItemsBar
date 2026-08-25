@@ -67,12 +67,12 @@ EIB.dbDefault = {
 		bar1 = barDefaults(),
 		bar2 = (function()
 			local db = barDefaults()
-			db.include = "POTIONGN,POTIONMN,FLASKMN,VANTUSMN,POTIONTWW,FLASKTWW,VANTUSTWW,UTILITY"
+			db.include = "POTIONMN,FLASKMN,VANTUSMN,UTILITY"
 			return db
 		end)(),
 		bar3 = (function()
 			local db = barDefaults()
-			db.include = "MAGEFOOD,FOODVENDOR,FOODMN,FOODTWW,RUNEMN,RUNETWW,CUSTOM"
+			db.include = "MAGEFOOD,FOODVENDOR,FOODMN,RUNEMN,CUSTOM"
 			return db
 		end)(),
 		bar4 = (function()

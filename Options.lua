@@ -861,6 +861,7 @@ local function BuildBarSection(layout)
 			function(value)
 				barDB().mouseOver = value
 				EIB:UpdateBar(currentBarID)
+				Refresh()
 			end,
 			masterDisabled
 		)
@@ -1200,6 +1201,7 @@ local function BuildGeneral(parent)
 			function(value)
 				GetDB().enable = value
 				EIB:ProfileUpdate()
+				Refresh()
 			end,
 			nil,
 			controlX
