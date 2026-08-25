@@ -673,11 +673,19 @@ function EB:CreateBar(id)
 		return
 	end
 
+	-- Calculate initial size from config (max buttons, buttonsPerRow, spacing)
+	local spacing = barDB.spacing
+	local maxButtons = barDB.numButtons
+	local numRows = ceil(maxButtons / barDB.buttonsPerRow)
+	local numCols = maxButtons > barDB.buttonsPerRow and barDB.buttonsPerRow or maxButtons
+	local initWidth = numCols * barDB.buttonWidth + (numCols - 1) * spacing
+	local initHeight = numRows * barDB.buttonHeight + (numRows - 1) * spacing
+
 	-- Bar (also the mover frame)
 	local bar = CreateFrame("Frame", "WTExtraItemsBar" .. id, _G.UIParent, "SecureHandlerStateTemplate")
 	bar.id = id
 	bar:SetClampedToScreen(true)
-	bar:SetSize(200, 40)
+	bar:SetSize(initWidth, initHeight)
 	EIB.Move:CreateMover(
 		bar,
 		"WTExtraItemsBar" .. id .. "Mover",
@@ -782,6 +790,10 @@ function EB:UpdateBar(id)
 	end
 
 	if not self:GetItemDB().enable or not barDB.enable then
+		for i = 1, 12 do
+			bar.buttons[i]:Hide()
+		end
+		EIB.Move:RefreshMover(id)
 		if bar.register then
 			UnregisterStateDriver(bar, "visibility")
 			bar.register = false
@@ -847,32 +859,26 @@ function EB:UpdateBar(id)
 	end
 
 	local spacing = barDB.spacing
-	local backdropSpacing = barDB.backdropSpacing
 
-	-- Resize bar
-	local numRows = ceil((buttonID - 1) / barDB.buttonsPerRow)
-	local numCols = buttonID > barDB.buttonsPerRow and barDB.buttonsPerRow or (buttonID - 1)
-	local newBarWidth = 2 * backdropSpacing + numCols * barDB.buttonWidth + (numCols - 1) * spacing
-	local newBarHeight = 2 * backdropSpacing + numRows * barDB.buttonHeight + (numRows - 1) * spacing
-	local emptyWidth = 2 * backdropSpacing + 5 * barDB.buttonWidth + 4 * spacing
-	bar:SetSize(math.max(newBarWidth, emptyWidth), newBarHeight)
+	-- Fixed bar size based on max buttons (numButtons), not actual button count
+	local maxButtons = barDB.numButtons
+	local numRows = ceil(maxButtons / barDB.buttonsPerRow)
+	local numCols = maxButtons > barDB.buttonsPerRow and barDB.buttonsPerRow or maxButtons
+	local newBarWidth = numCols * barDB.buttonWidth + (numCols - 1) * spacing
+	local newBarHeight = numRows * barDB.buttonHeight + (numRows - 1) * spacing
+	bar:SetSize(newBarWidth, newBarHeight)
+	EIB.Move:RefreshMover(id)
 
 	-- Hide buttons not in use
 	if buttonID == 1 then
-		local emptyWidth = 2 * backdropSpacing + 5 * barDB.buttonWidth + 4 * spacing
-		bar:SetSize(math.max(newBarWidth, emptyWidth), 2 * backdropSpacing + barDB.buttonHeight)
-		if bar.register then
-			UnregisterStateDriver(bar, "visibility")
-			bar.register = false
-			bar.registeredVisibility = nil
-		end
-		bar:Hide()
-		return
-	end
-
-	if buttonID <= 12 then
-		for hideButtonID = buttonID, 12 do
+		for hideButtonID = 1, 12 do
 			bar.buttons[hideButtonID]:Hide()
+		end
+	else
+		if buttonID <= 12 then
+			for hideButtonID = buttonID, 12 do
+				bar.buttons[hideButtonID]:Hide()
+			end
 		end
 	end
 
@@ -885,13 +891,13 @@ function EB:UpdateBar(id)
 
 		if i == 1 then
 			if anchor == "TOPLEFT" then
-				button:SetPoint(anchor, bar, anchor, backdropSpacing, -backdropSpacing)
+				button:SetPoint(anchor, bar, anchor, 0, 0)
 			elseif anchor == "TOPRIGHT" then
-				button:SetPoint(anchor, bar, anchor, -backdropSpacing, -backdropSpacing)
+				button:SetPoint(anchor, bar, anchor, 0, 0)
 			elseif anchor == "BOTTOMLEFT" then
-				button:SetPoint(anchor, bar, anchor, backdropSpacing, backdropSpacing)
+				button:SetPoint(anchor, bar, anchor, 0, 0)
 			elseif anchor == "BOTTOMRIGHT" then
-				button:SetPoint(anchor, bar, anchor, -backdropSpacing, backdropSpacing)
+				button:SetPoint(anchor, bar, anchor, 0, 0)
 			end
 		elseif i <= barDB.buttonsPerRow then
 			local nearest = bar.buttons[i - 1]

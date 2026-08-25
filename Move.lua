@@ -177,17 +177,19 @@ function EIB.Move:CreateMover(anchor, key, text, defaultPoint, relativeTo, relat
 	end
 
 	-- Transparent drag handle shown on top only in move mode
+	-- Handle frame is 16px larger than anchor (8px each side) so that
+	-- its edgeSize=16 backdrop border inner edge aligns with anchor edges.
 	local handle = CreateFrame("Button", key .. "Handle", UIParent, "BackdropTemplate")
-	handle:SetAllPoints(anchor)
+	handle:ClearAllPoints()
+	handle:SetPoint("TOPLEFT", anchor, "TOPLEFT", -2, 2)
+	handle:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", 2, -2)
 	handle:SetFrameStrata("TOOLTIP")
 	handle:SetBackdrop({
-		bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
 		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
 		tile = true,
 		tileSize = 16,
 		edgeSize = 16,
-		insets = { left = 4, right = 4, top = 4, bottom = 4 },
-		bgColor = { 0.1, 0.1, 0.1, 0.5 },
+		insets = { left = 0, right = 0, top = 0, bottom = 0 },
 		edgeColor = { 1, 1, 0, 0.9 },
 	})
 	handle:EnableMouse(false)
@@ -249,7 +251,9 @@ function EIB.Move:CreateMover(anchor, key, text, defaultPoint, relativeTo, relat
 	for index, existing in pairs(self.movers) do
 		if existing.key == key then
 			existing.handle:SetParent(anchor)
-			existing.handle:SetAllPoints(anchor)
+			existing.handle:ClearAllPoints()
+			existing.handle:SetPoint("TOPLEFT", anchor, "TOPLEFT", -2, 2)
+			existing.handle:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", 2, -2)
 			existing.anchor = anchor
 			existing.defaults = defaults
 			tinsert(self.movers, tremove(self.movers, index))
@@ -278,11 +282,17 @@ end
 function EIB.Move:ToggleMoveMode()
 	self.moveMode = not self.moveMode
 
-	for _, mover in pairs(self.movers) do
-		if self.moveMode then
+	if self.moveMode then
+		for _, mover in pairs(self.movers) do
+			local id = tonumber((mover.key or ""):match("WTExtraItemsBar(%d+)Mover"))
+			if id then
+				self:RefreshMover(id)
+			end
 			mover.handle:EnableMouse(true)
 			mover.handle:Show()
-		else
+		end
+	else
+		for _, mover in pairs(self.movers) do
 			mover.handle:EnableMouse(false)
 			mover.handle:Hide()
 		end
@@ -316,6 +326,21 @@ function EIB.Move:ResetPosition()
 	end
 
 	EIB:Print(EIB.L["POSITIONS_RESET"] or "Positions reset.")
+end
+
+---Refresh a mover's drag handle to match its anchor's current size.
+---@param id number bar ID
+function EIB.Move:RefreshMover(id)
+	local key = "WTExtraItemsBar" .. id .. "Mover"
+	for _, mover in pairs(self.movers) do
+		if mover.key == key then
+			local anchor = mover.anchor
+			mover.handle:ClearAllPoints()
+			mover.handle:SetPoint("TOPLEFT", anchor, "TOPLEFT", -2, 2)
+			mover.handle:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", 2, -2)
+			return
+		end
+	end
 end
 
 ---Remove all movers (cleanup on profile disable).

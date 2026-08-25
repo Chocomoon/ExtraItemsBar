@@ -969,23 +969,6 @@ local function BuildBarSection(layout)
 			masterDisabled
 		)
 	end)
-	layout:Row(L["Backdrop Spacing"], function(row)
-		CreateSlider(
-			row,
-			function()
-				return barDB().backdropSpacing
-			end,
-			function(value)
-				barDB().backdropSpacing = value
-				EIB:UpdateBar(currentBarID)
-			end,
-			1,
-			30,
-			1,
-			0,
-			masterDisabled
-		)
-	end)
 	layout:Row(L["Button Spacing"], function(row)
 		CreateSlider(
 			row,

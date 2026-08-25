@@ -26,7 +26,6 @@ local function barDefaults()
 		alphaMax = 1,
 		numButtons = 12,
 		backdrop = true,
-		backdropSpacing = 3,
 		buttonWidth = 30,
 		buttonHeight = 30,
 		buttonsPerRow = 12,
