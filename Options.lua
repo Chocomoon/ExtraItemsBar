@@ -640,7 +640,7 @@ end
 -- ---------------------------------------------------------------------------
 
 local function NewLayout(parent, compact)
-	local layout = { y = -6 }
+	local layout = { y = -6, parent = parent }
 
 	function layout:Header(text)
 		self.y = self.y - (compact and 4 or 8)
@@ -694,6 +694,18 @@ local function NewLayout(parent, compact)
 	end
 
 	return layout
+end
+
+-- Thin horizontal divider line used to separate setting groups.
+local function AddDivider(layout)
+	local parent = layout.parent
+	layout.y = layout.y - 8
+	local divider = parent:CreateTexture(nil, "ARTWORK")
+	divider:SetColorTexture(0.35, 0.35, 0.35, 0.6)
+	divider:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, layout.y)
+	divider:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -12, layout.y)
+	divider:SetHeight(1)
+	layout.y = layout.y - 10
 end
 
 -- ---------------------------------------------------------------------------
@@ -850,7 +862,7 @@ local function BuildBarSection(layout)
 		)
 	end)
 
-	layout:Space()
+	AddDivider(layout)
 
 	layout:Row(L["Mouse Over"], function(row)
 		CreateCheckbox(
@@ -939,6 +951,8 @@ local function BuildBarSection(layout)
 			masterDisabled
 		)
 	end)
+
+	AddDivider(layout)
 
 	layout:Row(L["Bar Backdrop"], function(row)
 		CreateCheckbox(
@@ -1071,7 +1085,7 @@ local function BuildBarSection(layout)
 		)
 	end)
 
-	layout:Space()
+	AddDivider(layout)
 
 	layout:Header(L["Crafting Quality Tier"])
 	layout:Row(L["Size"], function(row)
@@ -1123,14 +1137,18 @@ local function BuildBarSection(layout)
 		)
 	end)
 
-	layout:Space()
+	AddDivider(layout)
 
 	layout:Header(L["Counter"])
+	layout:Text(L["Count Font Description"], 18)
 	BuildFontGroup(layout, function()
 		return barDB().countFont
 	end, masterDisabled)
 
+	AddDivider(layout)
+
 	layout:Header(L["Key Binding"])
+	layout:Text(L["Key Binding Font Description"], 18)
 	BuildFontGroup(layout, function()
 		return barDB().bindFont
 	end, masterDisabled)
@@ -1144,17 +1162,6 @@ local function BuildAbout(layout)
 	layout:Text(format(L["Original author: %s"], "fang2hou"))
 	layout:Text(format(L["Feature originally from %s"], "EUI (cadcamzy)"))
 	layout:Text("This addon is used and modified with the author's permission. See NOTICE.txt.")
-
-	layout:Row(L["Unlock"], function(row)
-		CreateButton(row, L["Unlock"], function()
-			EIB:ToggleMoveMode()
-		end)
-	end)
-	layout:Row(L["Reset Positions"], function(row)
-		CreateButton(row, L["Reset Positions"], function()
-			EIB:ResetPosition()
-		end)
-	end)
 end
 
 -- ---------------------------------------------------------------------------
@@ -1164,7 +1171,11 @@ end
 local function BuildGeneral(parent)
 	local layout = NewLayout(parent, true)
 
-	layout:Header(L["Extra Items Bar"])
+	-- Top title: enlarged two steps (GameFontNormalLarge) + version
+	local title = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	title:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, layout.y)
+	title:SetText(L["Extra Items Bar"] .. "  v" .. (EIB.version or "?"))
+	layout.y = layout.y - 32
 
 	local measure = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	measure:Hide()
@@ -1230,8 +1241,47 @@ local function BuildGeneral(parent)
 			nil,
 			controlX
 		)
+
+		-- Help icon: shows the auto-detect explanation on hover.
+		-- Positioned right after the "Bar Style" label text (10px gap) so it
+		-- never collides with the dropdown on the right.
+		local measure = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		measure:SetText(L["Bar Style"])
+		measure:Hide()
+		local gap = 10
+		local help = CreateFrame("Button", nil, row)
+		help:SetSize(16, 16)
+		help:SetPoint("LEFT", row, "LEFT", 4 + measure:GetUnboundedStringWidth() + gap, 0)
+		help:SetNormalTexture("Interface\\FriendsFrame\\InformationIcon")
+		help:SetHighlightTexture("Interface\\FriendsFrame\\InformationIcon-Highlight")
+		help:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+			GameTooltip:SetText(L["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."], nil, nil, nil, nil, true)
+			GameTooltip:Show()
+		end)
+		help:SetScript("OnLeave", function()
+			GameTooltip:Hide()
+		end)
 	end, nil, controlX)
-	layout:Text(L["Automatically detect whether the action bars are skinned by a UI addon. If they are, the bars use a flat minimal style; otherwise the native grid look is kept."])
+
+	layout:Space(6)
+	layout:Row(nil, function(row)
+		local btn1 = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+		btn1:SetSize(110, 22)
+		btn1:SetPoint("LEFT", row, "LEFT", 4, 0)
+		btn1:SetText(L["Unlock"])
+		btn1:SetScript("OnClick", function()
+			EIB:ToggleMoveMode()
+		end)
+
+		local btn2 = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+		btn2:SetSize(110, 22)
+		btn2:SetPoint("LEFT", row, "LEFT", 118, 0)
+		btn2:SetText(L["Reset Positions"])
+		btn2:SetScript("OnClick", function()
+			EIB:ResetPosition()
+		end)
+	end)
 
 	parent:SetHeight(math.abs(layout.y) + 20)
 end
