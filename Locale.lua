@@ -397,3 +397,12 @@ EIB.L = setmetatable(translations, {
 		return defaultLocale[key] or key
 	end,
 })
+
+-- Register labels for the native Keybindings UI (mirrors ElvUI_WindTools).
+_G.BINDING_CATEGORY_EXTRAITEMS = EIB.L["Extra Items Bar"]
+for i = 1, 5 do
+	_G["BINDING_HEADER_EXTRAITEMS_BAR" .. i] = EIB.L["Extra Items Bar"] .. " " .. i
+	for j = 1, 12 do
+		_G[format("BINDING_NAME_CLICK WTExtraItemsBar%dButton%d:LeftButton", i, j)] = EIB.L["Extra Items Bar"] .. " " .. i .. " " .. EIB.L["Button"] .. " " .. j
+	end
+end
