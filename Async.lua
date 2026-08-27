@@ -45,6 +45,7 @@ function EIB.Async.WithItemID(itemID, callback)
 
 	local itemInstance = Item:CreateFromItemID(itemID)
 	if itemInstance:IsItemEmpty() then
+		callback(nil)
 		return
 	end
 
@@ -196,6 +197,7 @@ function EIB.Async.WithItemSlotID(itemSlotID, callback)
 
 	local itemInstance = Item:CreateFromEquipmentSlot(itemSlotID)
 	if itemInstance:IsItemEmpty() then
+		callback(nil)
 		return
 	end
 

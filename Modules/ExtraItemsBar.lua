@@ -411,7 +411,7 @@ function EB:CreateButton(name, barDB)
 	button:SetSize(barDB.buttonWidth, barDB.buttonHeight)
 	button:SetClampedToScreen(true)
 	button:SetAttribute("type", "item")
-	button:EnableMouse(false)
+	button:EnableMouse(true)
 	button:RegisterForClicks(EIB.UseKeyDown and "AnyDown" or "AnyUp")
 
 	EIB:StyleButtonBackdrop(button)
@@ -477,6 +477,8 @@ function EB:SetUpButton(button, itemData, slotID, waitGroup)
 	button.spellName = nil
 	button.slotID = nil
 	button.countText = nil
+	button.setupToken = (button.setupToken or 0) + 1
+	local setupToken = button.setupToken
 
 	if itemData then
 		button.itemID = itemData.itemID
@@ -486,19 +488,24 @@ function EB:SetUpButton(button, itemData, slotID, waitGroup)
 
 		waitGroup.count = waitGroup.count + 1
 		async.WithItemID(itemData.itemID, function(item)
+			if not item or button.setupToken ~= setupToken then
+				waitGroup.count = waitGroup.count - 1
+				return
+			end
 			button.itemName = item:GetItemName()
 			button.tex:SetTexture(item:GetItemIcon())
 			button:SetTier(itemData.itemID)
-			C_Timer_After(0.1, function()
-				-- delay for quality tier fetching and text changing
-				waitGroup.count = waitGroup.count - 1
-			end)
+			waitGroup.count = waitGroup.count - 1
 		end)
 	elseif slotID then
 		button.slotID = slotID
 
 		waitGroup.count = waitGroup.count + 1
 		async.WithItemSlotID(slotID, function(item)
+			if not item or button.setupToken ~= setupToken then
+				waitGroup.count = waitGroup.count - 1
+				return
+			end
 			button.itemName = item:GetItemName()
 			button.tex:SetTexture(item:GetItemIcon())
 
@@ -510,10 +517,7 @@ function EB:SetUpButton(button, itemData, slotID, waitGroup)
 
 			button:SetTier(item:GetItemID())
 
-			C_Timer_After(0.1, function()
-				-- delay for quality tier fetching and text changing
-				waitGroup.count = waitGroup.count - 1
-			end)
+			waitGroup.count = waitGroup.count - 1
 		end)
 	end
 
@@ -535,12 +539,16 @@ function EB:SetUpButton(button, itemData, slotID, waitGroup)
 				start, duration, enable = C_Item_GetItemCooldown(button.itemID)
 			end
 			CooldownFrame_Set(button.cooldown, start, duration, enable)
-			if duration and duration > 0 and enable and enable == 0 then
-				button.tex:SetVertexColor(0.4, 0.4, 0.4)
-			elseif not InCombatLockdown() and C_Item_IsItemInRange(button.itemID, "target") == false then
-				button.tex:SetVertexColor(1, 0, 0)
-			else
-				button.tex:SetVertexColor(1, 1, 1)
+			local now = GetTime()
+			if not button.lastRangeCheck or now - button.lastRangeCheck > 0.3 then
+				button.lastRangeCheck = now
+				if duration and duration > 0 and enable and enable == 0 then
+					button.tex:SetVertexColor(0.4, 0.4, 0.4)
+				elseif not InCombatLockdown() and C_Item_IsItemInRange(button.itemID, "target") == false then
+					button.tex:SetVertexColor(1, 0, 0)
+				else
+					button.tex:SetVertexColor(1, 1, 1)
+				end
 			end
 		end
 	elseif button.slotID then
@@ -605,7 +613,6 @@ function EB:SetUpButton(button, itemData, slotID, waitGroup)
 
 	-- Attributes
 	if not InCombatLockdown() then
-		button:EnableMouse(true)
 		button:Show()
 		button:SetAttribute("type", "macro")
 
@@ -790,7 +797,7 @@ function EB:UpdateBar(id)
 	end
 
 	if not self:GetItemDB().enable or not barDB.enable then
-		for i = 1, 12 do
+		for i = 1, #bar.buttons do
 			bar.buttons[i]:Hide()
 		end
 		EIB.Move:RefreshMover(id)
@@ -808,7 +815,7 @@ function EB:UpdateBar(id)
 	bar:Show()
 
 	local function addNormalButton(itemID)
-		if self:ValidateItem(itemID) and buttonID <= barDB.numButtons then
+		if self:ValidateItem(itemID) and buttonID <= barDB.numButtons and buttonID <= #bar.buttons then
 			self:SetUpButton(bar.buttons[buttonID], { itemID = itemID }, nil, bar.waitGroup)
 			self:UpdateButtonSize(bar.buttons[buttonID], barDB)
 			buttonID = buttonID + 1
@@ -817,7 +824,7 @@ function EB:UpdateBar(id)
 
 	local function addSlotButton(slotID)
 		local itemID = GetInventoryItemID("player", slotID)
-		if self:ValidateItem(itemID) and buttonID <= barDB.numButtons then
+		if self:ValidateItem(itemID) and buttonID <= barDB.numButtons and buttonID <= #bar.buttons then
 			self:SetUpButton(bar.buttons[buttonID], nil, slotID, bar.waitGroup)
 			self:UpdateButtonSize(bar.buttons[buttonID], barDB)
 			buttonID = buttonID + 1
@@ -977,6 +984,19 @@ function EB:UpdateBars()
 	end
 end
 
+-- Coalesce chatty event-driven rebuilds (bag/zone changes fire in bursts)
+-- into a single UpdateBars pass per ~0.15s window.
+function EB:ScheduleUpdateBars()
+	if self.updatePending then
+		return
+	end
+	self.updatePending = true
+	C_Timer_After(0.15, function()
+		self.updatePending = false
+		self:UpdateBars()
+	end)
+end
+
 do
 	local lastUpdateTime = 0
 	function EB:UNIT_INVENTORY_CHANGED()
@@ -1082,19 +1102,19 @@ function EB:Initialize()
 	self:UpdateBars()
 	self:UpdateBinding()
 
-	self:RegisterEvent("BAG_UPDATE_DELAYED", "UpdateBars")
+	self:RegisterEvent("BAG_UPDATE_DELAYED", "ScheduleUpdateBars")
 	self:RegisterEvent("ITEM_LOCKED")
-	self:RegisterEvent("PLAYER_ALIVE", "UpdateBars")
+	self:RegisterEvent("PLAYER_ALIVE", "ScheduleUpdateBars")
 	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", "UpdateEquipmentItem")
-	self:RegisterEvent("PLAYER_UNGHOST", "UpdateBars")
+	self:RegisterEvent("PLAYER_UNGHOST", "ScheduleUpdateBars")
 	self:RegisterEvent("QUEST_ACCEPTED", "UpdateQuestItem")
 	self:RegisterEvent("QUEST_LOG_UPDATE", "UpdateQuestItem")
 	self:RegisterEvent("QUEST_TURNED_IN", "UpdateQuestItem")
 	self:RegisterEvent("QUEST_WATCH_LIST_CHANGED", "UpdateQuestItem")
 	self:RegisterEvent("UNIT_INVENTORY_CHANGED")
 	self:RegisterEvent("UPDATE_BINDINGS", "UpdateBinding")
-	self:RegisterEvent("ZONE_CHANGED", "UpdateBars")
-	self:RegisterEvent("ZONE_CHANGED_NEW_AREA", "UpdateBars")
+	self:RegisterEvent("ZONE_CHANGED", "ScheduleUpdateBars")
+	self:RegisterEvent("ZONE_CHANGED_NEW_AREA", "ScheduleUpdateBars")
 
 	self.initialized = true
 end

@@ -1,7 +1,9 @@
+[简体中文](README.zhCN.md)
+
 # Extra Items Bar
 
 A standalone extraction of the **"Extra Items Bar"** module from
-[ElvUI_WindTools](https://github.com/fang2hou/ElvUI_WindTools).
+[ElvUI_WindTools](https://github.com/wind-addons/ElvUI_WindTools).
 
 Adds up to 5 configurable bars that show quest items and usable equipment, so
 you never miss a quest objective or trinket in combat. **No ElvUI required.**
@@ -26,7 +28,7 @@ you never miss a quest objective or trinket in combat. **No ElvUI required.**
 Copy the `ExtraItemsBar` folder into `World of Warcraft/_retail_/Interface/AddOns/`
 (or your flavor's `Interface/AddOns` folder) and restart the game.
 
-Requires WoW 11.0.7+ (TOC `120007`). `LibSharedMedia-3.0` is optional and only
+Requires WoW 12.1+ (TOC `120100`). `LibSharedMedia-3.0` is optional and only
 used to pick extra fonts.
 
 ## Usage
@@ -64,6 +66,39 @@ Available codes (the edit box tooltip lists them all):
 - `BANNER`, `UTILITY`, `OPENABLE`
 - `PROF`, `PROFTWW`, `PROFMN`
 - `SEEDS`, `BIGDIG`, `DELVE`, `HOLIDAY`
+
+## Default settings
+
+Each of the 5 bars starts from this template (overrides noted per bar):
+
+| Setting              | Default                                |
+| -------------------- | -------------------------------------- |
+| Enable               | true (bars 4 & 5 default **false**)    |
+| Mouse-over fade      | false                                  |
+| Global fade          | false                                  |
+| Visibility           | `[petbattle]hide;show`                 |
+| Fade time            | 0.3                                    |
+| Alpha min / max      | 0 / 1                                  |
+| Number of buttons    | 12                                     |
+| Buttons per row      | 12                                     |
+| Button size          | 30 × 30                                |
+| Anchor point         | TOPLEFT                                |
+| Spacing / Snap       | 2 / 2                                  |
+| Backdrop             | true                                   |
+| Tooltip              | true                                   |
+| Quality-tier badge   | size 16, offset (0, 0)                 |
+| Count / Keybind font | DefaultFont, size 12, OUTLINE, white  |
+| Addon-wide           | noQuantumItems = false, barStyle = auto |
+
+Button-group (`include`) per bar:
+
+- **Bar 1** (enabled): `QUEST,BANNER,EQUIP,PROFMN,HOLIDAY,OPENABLE,DELVE`
+- **Bar 2** (enabled): `POTIONMN,FLASKMN,VANTUSMN,UTILITY`
+- **Bar 3** (enabled): `MAGEFOOD,FOODVENDOR,FOODMN,RUNEMN,CUSTOM`
+- **Bar 4** (disabled): `CUSTOM`
+- **Bar 5** (disabled): `CUSTOM`
+
+(A built-in blacklist excludes a few known-problematic items; see `DB.lua`.)
 
 ## Attribution & License
 
