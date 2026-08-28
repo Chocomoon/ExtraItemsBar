@@ -224,7 +224,7 @@ local function CreateEditBox(row, get, set, disabledFn, tooltip)
 	return widget
 end
 
-local function CreateDropdown(row, valueBuilder, get, set, disabledFn, left)
+local function CreateDropdown(row, valueBuilder, get, set, disabledFn, left, noRefresh)
 	local dd = CreateFrame("Frame", nil, row, "UIDropDownMenuTemplate")
 	if left then
 		dd:SetPoint("LEFT", row, "LEFT", left, 0)
@@ -256,11 +256,22 @@ local function CreateDropdown(row, valueBuilder, get, set, disabledFn, left)
 		for key, label in pairs(values) do
 			info.text = label
 			info.value = key
-			info.func = function()
-				set(key)
-				UIDropDownMenu_SetText(self, label)
+		info.func = function()
+			local saved = rightScroll and rightScroll:GetVerticalScroll() or 0
+			set(key)
+			UIDropDownMenu_SetText(self, label)
+			dd:SetWidth(max(dd.Text:GetUnboundedStringWidth() + 32, 120))
+			if noRefresh then
+				EIB:UpdateBar(currentBarID)
+			else
 				Refresh()
 			end
+			if rightScroll then
+				C_Timer.After(0, function()
+					rightScroll:SetVerticalScroll(saved)
+				end)
+			end
+		end
 			info.checked = get() == key
 			UIDropDownMenu_AddButton(info, level)
 		end
@@ -284,7 +295,7 @@ local function CreateDropdown(row, valueBuilder, get, set, disabledFn, left)
 			dd:SetHeight(22)
 
 			local text = dd.Text
-			text:SetJustifyH("LEFT")
+			text:SetJustifyH("RIGHT")
 			text:ClearAllPoints()
 			text:SetPoint("LEFT", dd, "LEFT", 8, 0)
 			text:SetPoint("RIGHT", dd, "RIGHT", -24, 0)
@@ -316,7 +327,7 @@ local function CreateDropdown(row, valueBuilder, get, set, disabledFn, left)
 				pushed:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", 0, 0)
 			end
 
-			dd:SetWidth(max(text:GetUnboundedStringWidth() + 32, 40))
+			dd:SetWidth(max(text:GetUnboundedStringWidth() + 32, 120))
 		end,
 		SetDisabled = function(_, disabled)
 			dd:SetAlpha(disabled and 0.4 or 1)
@@ -327,7 +338,6 @@ local function CreateDropdown(row, valueBuilder, get, set, disabledFn, left)
 	return Track(widget, disabledFn)
 end
 
-local swatchFunc
 local function CreateColorButton(row, get, set, disabledFn)
 	local swatch = CreateFrame("Button", nil, row)
 	swatch:SetSize(24, 16)
@@ -336,19 +346,18 @@ local function CreateColorButton(row, get, set, disabledFn)
 
 	swatch:SetScript("OnClick", function()
 		local r, g, b = get()
-		swatchFunc = function()
-			local nr, ng, nb = ColorPickerFrame:GetColorRGB()
-			set(nr, ng, nb)
-			swatch:GetNormalTexture():SetVertexColor(nr, ng, nb)
-		end
-		ColorPickerFrame:SetFrameStrata("FULLSCREEN_DIALOG")
-		ColorPickerFrame.func = swatchFunc
-		ColorPickerFrame.cancelFunc = function()
-			set(r, g, b)
-			swatch:GetNormalTexture():SetVertexColor(r, g, b)
-		end
-		ColorPickerFrame:SetColorRGB(r, g, b)
-		ColorPickerFrame:Show()
+		ColorPickerFrame:SetupColorPickerAndShow({
+			r = r, g = g, b = b,
+			swatchFunc = function()
+				local nr, ng, nb = ColorPickerFrame:GetColorRGB()
+				set(nr, ng, nb)
+				swatch:GetNormalTexture():SetVertexColor(nr, ng, nb)
+			end,
+			cancelFunc = function()
+				set(r, g, b)
+				swatch:GetNormalTexture():SetVertexColor(r, g, b)
+			end,
+		})
 	end)
 
 	local widget = {
@@ -454,16 +463,18 @@ end
 -- ---------------------------------------------------------------------------
 
 local function FontValues()
+	local defaultLabel = L["Default"]
+	local result = { ["default"] = defaultLabel }
 	local LSM = EIB:GetLSM()
 	if LSM then
 		local list = LSM:List("font") or {}
-		local result = {}
 		for _, name in ipairs(list) do
-			result[name] = name
+			if name ~= defaultLabel then
+				result[name] = name
+			end
 		end
-		return result
 	end
-	return {}
+	return result
 end
 
 local outlineValues = {
@@ -722,8 +733,11 @@ local function BuildFontGroup(layout, groupDB, disabledFn)
 			end,
 			function(value)
 				groupDB().name = value
+				EIB:UpdateBar(currentBarID)
 			end,
-			disabledFn
+			disabledFn,
+			nil,
+			true
 		)
 	end)
 	layout:Row(L["Outline"], function(row)
@@ -737,8 +751,11 @@ local function BuildFontGroup(layout, groupDB, disabledFn)
 			end,
 			function(value)
 				groupDB().style = value
+				EIB:UpdateBar(currentBarID)
 			end,
-			disabledFn
+			disabledFn,
+			nil,
+			true
 		)
 	end)
 	layout:Row(L["Size"], function(row)
@@ -749,6 +766,7 @@ local function BuildFontGroup(layout, groupDB, disabledFn)
 			end,
 			function(value)
 				groupDB().size = value
+				EIB:UpdateBar(currentBarID)
 			end,
 			5,
 			60,
@@ -765,6 +783,7 @@ local function BuildFontGroup(layout, groupDB, disabledFn)
 			end,
 			function(value)
 				groupDB().xOffset = value
+				EIB:UpdateBar(currentBarID)
 			end,
 			-100,
 			100,
@@ -781,6 +800,7 @@ local function BuildFontGroup(layout, groupDB, disabledFn)
 			end,
 			function(value)
 				groupDB().yOffset = value
+				EIB:UpdateBar(currentBarID)
 			end,
 			-100,
 			100,
@@ -797,6 +817,7 @@ local function BuildFontGroup(layout, groupDB, disabledFn)
 			end,
 			function(r, g, b)
 				groupDB().color.r, groupDB().color.g, groupDB().color.b = r, g, b
+				EIB:UpdateBar(currentBarID)
 			end,
 			disabledFn
 		)

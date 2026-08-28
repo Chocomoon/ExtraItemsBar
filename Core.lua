@@ -50,9 +50,20 @@ end
 EIB.UseKeyDown = C_CVar.GetCVarBool("ActionButtonUseKeyDown")
 
 -- Default font for new profiles: use LSM "Montserrat" if present, else game default
-EIB.DefaultFont = "Montserrat"
+EIB.DefaultFont = "default"
 
 EIB.TexCoords = { 0.08, 0.92, 0.08, 0.92 }
+
+-- Valid font outline flags for FontInstance:SetFont; anything else is treated as "no outline"
+local VALID_FONT_STYLES = {
+	OUTLINE = true,
+	THICKOUTLINE = true,
+	MONOCHROME = true,
+	FILTER = true,
+	FIXEDHEIGHT = true,
+	NEVERCULL = true,
+	SLUG = true,
+}
 
 ---Small helpers (replaces WindTools Functions that were only needed here)
 function EIB:SetFont(text, db)
@@ -62,14 +73,20 @@ function EIB:SetFont(text, db)
 
 	local fontName, fontHeight = text:GetFont()
 	local font
-	if db.name then
+	if db.name and db.name ~= "default" then
 		local LSM = self:GetLSM()
 		if LSM then
 			font = LSM:Fetch("font", db.name)
 		end
+	elseif db.name == "default" then
+		font = STANDARD_TEXT_FONT
 	end
 
-	text:SetFont(font or fontName or STANDARD_TEXT_FONT, db.size or fontHeight or 12, db.style or "NONE")
+	local style = db.style
+	if not (style and VALID_FONT_STYLES[style]) then
+		style = nil
+	end
+	text:SetFont(font or fontName or STANDARD_TEXT_FONT, db.size or fontHeight or 12, style)
 end
 
 function EIB:SetFontColor(text, db)
@@ -150,6 +167,20 @@ EIB.eventFrame:SetScript("OnEvent", function(_, event, addonLoaded)
 		for _, bar in pairs(EIB:GetItemDB()) do
 			if type(bar) == "table" and bar.spacing == 3 then
 				bar.spacing = 2
+			end
+		end
+
+		-- One-time migration: the default font was previously hardcoded to
+		-- "Montserrat"; switch bars that still use it to the new "default"
+		-- (game default font) sentinel.
+		for _, bar in pairs(EIB:GetItemDB()) do
+			if type(bar) == "table" then
+				if bar.countFont and bar.countFont.name == "Montserrat" then
+					bar.countFont.name = "default"
+				end
+				if bar.bindFont and bar.bindFont.name == "Montserrat" then
+					bar.bindFont.name = "default"
+				end
 			end
 		end
 
