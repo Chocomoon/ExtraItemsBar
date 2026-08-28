@@ -1117,6 +1117,7 @@ local function BuildBarSection(layout)
 			end,
 			function(value)
 				barDB().qualityTier.size = value
+				EIB:UpdateBar(currentBarID)
 			end,
 			5,
 			60,
@@ -1133,6 +1134,7 @@ local function BuildBarSection(layout)
 			end,
 			function(value)
 				barDB().qualityTier.xOffset = value
+				EIB:UpdateBar(currentBarID)
 			end,
 			-100,
 			100,
@@ -1149,6 +1151,7 @@ local function BuildBarSection(layout)
 			end,
 			function(value)
 				barDB().qualityTier.yOffset = value
+				EIB:UpdateBar(currentBarID)
 			end,
 			-100,
 			100,

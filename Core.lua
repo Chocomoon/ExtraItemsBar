@@ -86,7 +86,17 @@ function EIB:SetFont(text, db)
 	if not (style and VALID_FONT_STYLES[style]) then
 		style = nil
 	end
-	text:SetFont(font or fontName or STANDARD_TEXT_FONT, db.size or fontHeight or 12, style)
+
+	local size = db.size or fontHeight or 12
+	local justifyHBefore = text.GetJustifyH and text:GetJustifyH()
+	if text.FontTemplate then
+		text:FontTemplate(font or fontName or STANDARD_TEXT_FONT, size, style)
+	else
+		text:SetFont(font or fontName or STANDARD_TEXT_FONT, size, style)
+	end
+	if text.SetJustifyH and text.GetJustifyH and justifyHBefore and justifyHBefore ~= text:GetJustifyH() then
+		text:SetJustifyH(justifyHBefore)
+	end
 end
 
 function EIB:SetFontColor(text, db)
