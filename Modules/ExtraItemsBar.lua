@@ -287,19 +287,6 @@ function EIB:GetBarStyle()
 	return "grid"
 end
 
--- Replacement for E.ActionBars:StyleButton
-function EIB:StyleButton(button)
-	local cfg = styleConfig[EIB:GetBarStyle()].button
-	button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-	local highlight = button:GetHighlightTexture()
-	highlight:SetBlendMode("ADD")
-	highlight:SetVertexColor(unpack(cfg.highlightColor))
-
-	button:SetPushedTexture("Interface\\Buttons\\WHITE8X8")
-	local pushed = button:GetPushedTexture()
-	pushed:SetVertexColor(unpack(cfg.pushedColor))
-end
-
 -- Apply the current bar style to an existing button backdrop without touching
 -- the border color, which is driven by item data (see SetUpButton).
 function EIB:StyleButtonBackdrop(button)
@@ -309,6 +296,30 @@ function EIB:StyleButtonBackdrop(button)
 	if button.isEmpty then
 		showChrome = (style == "grid") and (button.barDB and button.barDB.backdrop)
 	end
+
+	if not showChrome then
+		local hl = button:GetHighlightTexture()
+		if hl then
+			hl:SetAlpha(0)
+		end
+		local p = button:GetPushedTexture()
+		if p then
+			p:SetAlpha(0)
+		end
+	else
+		button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+		local highlight = button:GetHighlightTexture()
+		if highlight then
+			highlight:SetBlendMode("ADD")
+			highlight:SetVertexColor(unpack(cfg.highlightColor))
+		end
+		button:SetPushedTexture("Interface\\Buttons\\WHITE8X8")
+		local pushed = button:GetPushedTexture()
+		if pushed then
+			pushed:SetVertexColor(unpack(cfg.pushedColor))
+		end
+	end
+
 	local backdropCfg = cfg.backdrop
 	if style == "flat" and not showChrome then
 		backdropCfg = { bgFile = "Interface\\Buttons\\WHITE8X8", tile = false, edgeSize = 0 }
@@ -496,8 +507,6 @@ function EB:CreateButton(name, barDB)
 			button.qualityTier:Show()
 		end
 	end
-
-	EIB:StyleButton(button)
 
 	return button
 end
