@@ -59,10 +59,11 @@ local VALID_FONT_STYLES = {
 	OUTLINE = true,
 	THICKOUTLINE = true,
 	MONOCHROME = true,
-	FILTER = true,
-	FIXEDHEIGHT = true,
-	NEVERCULL = true,
-	SLUG = true,
+	SHADOW = true,
+	SHADOWOUTLINE = true,
+	MONOCHROMEOUTLINE = true,
+	MONOCHROMETHICKOUTLINE = true,
+	THICKMONOCHROME = true,
 }
 
 ---Small helpers (replaces WindTools Functions that were only needed here)

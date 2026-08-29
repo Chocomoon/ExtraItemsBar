@@ -545,6 +545,7 @@ function EB:SetUpButton(button, itemData, slotID, waitGroup)
 			button:SetAttribute("type", nil)
 			button:SetAttribute("macrotext", nil)
 		end
+		EIB:StyleButtonBackdrop(button)
 		button:Show()
 		return
 	end
