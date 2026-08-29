@@ -1061,6 +1061,9 @@ function EB:UpdateBars()
 	for i = 1, 5 do
 		self:UpdateBar(i)
 	end
+	-- Re-apply keybind text after every bar rebuild so it survives
+	-- empty<->filled transitions (SetUpButton only clears it on empty).
+	self:UpdateBinding()
 end
 
 -- Coalesce chatty event-driven rebuilds (bag/zone changes fire in bursts)
@@ -1156,12 +1159,16 @@ function EB:UpdateBinding()
 		return
 	end
 
-	for i = 1, 5 do
+		for i = 1, 5 do
 		for j = 1, 12 do
 			local button = self.bars[i].buttons[j]
 			if button then
-				local bindingName = format("CLICK WTExtraItemsBar%dButton%d:LeftButton", i, j)
-				button.bind:SetText(self:GetBindingKeyText(bindingName))
+				if button.isEmpty then
+					button.bind:SetText("")
+				else
+					local bindingName = format("CLICK WTExtraItemsBar%dButton%d:LeftButton", i, j)
+					button.bind:SetText(self:GetBindingKeyText(bindingName))
+				end
 			end
 		end
 	end

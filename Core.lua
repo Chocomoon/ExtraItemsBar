@@ -210,6 +210,9 @@ EIB.eventFrame:SetScript("OnEvent", function(_, event, addonLoaded)
 		EIB:RegisterOptionsPanel()
 		-- All addons are loaded by now, so auto style detection is accurate.
 		EIB:ApplyBarStyle()
+		-- Bindings are fully loaded by PLAYER_LOGIN; refresh keybind text so
+		-- it is correct on the first frame (GetBindingKey may be empty at ADDON_LOADED).
+		EIB:UpdateBinding()
 	end
 end)
 EIB.eventFrame:RegisterEvent("PLAYER_LOGIN")
