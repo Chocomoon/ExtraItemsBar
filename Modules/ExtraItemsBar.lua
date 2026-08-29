@@ -472,7 +472,7 @@ function EB:CreateButton(name, barDB)
 	EIB:SetFont(qualityTier, {
 		size = barDB.qualityTier.size,
 		style = "OUTLINE",
-	})
+	}, true)
 
 	local count = button:CreateFontString(nil, "OVERLAY")
 	count:SetTextColor(1, 1, 1, 1)
@@ -500,10 +500,12 @@ function EB:CreateButton(name, barDB)
 		local qualityInfo = C_TradeSkillUI_GetItemReagentQualityInfo(itemIDOrLink)
 
 		if not qualityInfo or not qualityInfo.icon or qualityInfo.icon == "" then
+			button.qualityTierIcon = nil
 			button.qualityTier:SetText("")
 			button.qualityTier:Hide()
 		else
-			button.qualityTier:SetText(CreateAtlasMarkup(qualityInfo.icon))
+			button.qualityTierIcon = qualityInfo.icon
+			button.qualityTier:SetText(CreateAtlasMarkup(qualityInfo.icon, barDB.qualityTier.size, barDB.qualityTier.size))
 			button.qualityTier:Show()
 		end
 	end
@@ -532,6 +534,7 @@ function EB:SetUpButton(button, itemData, slotID, waitGroup)
 			button.bind:SetText("")
 		end
 		if button.qualityTier then
+			button.qualityTierIcon = nil
 			button.qualityTier:SetText("")
 			button.qualityTier:Hide()
 		end
@@ -994,7 +997,7 @@ function EB:UpdateBar(id)
 		EIB:SetFont(button.qualityTier, {
 			size = barDB.qualityTier.size,
 			style = "OUTLINE",
-		})
+		}, true)
 
 		EIB:SetFont(button.count, barDB.countFont)
 		EIB:SetFont(button.bind, barDB.bindFont)
@@ -1004,6 +1007,13 @@ function EB:UpdateBar(id)
 
 		button.qualityTier:ClearAllPoints()
 		button.qualityTier:SetPoint("TOPLEFT", button, "TOPLEFT", barDB.qualityTier.xOffset, barDB.qualityTier.yOffset)
+
+		-- Re-bake the atlas markup with the current size so the star icon
+		-- follows the quality-tier size setting (atlas size is fixed in the
+		-- text string and does not scale with the font size).
+		if button.qualityTierIcon then
+			button.qualityTier:SetText(CreateAtlasMarkup(button.qualityTierIcon, barDB.qualityTier.size, barDB.qualityTier.size))
+		end
 
 		button.count:ClearAllPoints()
 		button.count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", barDB.countFont.xOffset, barDB.countFont.yOffset)

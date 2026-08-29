@@ -67,7 +67,7 @@ local VALID_FONT_STYLES = {
 }
 
 ---Small helpers (replaces WindTools Functions that were only needed here)
-function EIB:SetFont(text, db)
+function EIB:SetFont(text, db, atlas)
 	if not text or not text.GetFont or not db then
 		return
 	end
@@ -90,9 +90,18 @@ function EIB:SetFont(text, db)
 
 	local size = db.size or fontHeight or 12
 	local justifyHBefore = text.GetJustifyH and text:GetJustifyH()
-	if text.FontTemplate then
-		text:FontTemplate(font or fontName or STANDARD_TEXT_FONT, size, style)
+	if atlas then
+		-- Quality tier uses FontTemplate so ElvUI keeps its glyph font in sync;
+		-- the atlas (star) icon size is baked into the text via CreateAtlasMarkup,
+		-- not driven by the font size, so this only affects the glyph font.
+		if text.FontTemplate then
+			text:FontTemplate(font or fontName or STANDARD_TEXT_FONT, size, style)
+		else
+			text:SetFont(font or fontName or STANDARD_TEXT_FONT, size, style)
+		end
 	else
+		-- Bind / count text: use native SetFont and never register into ElvUI's
+		-- global font-update table, so ElvUI re-skinning cannot clobber it.
 		text:SetFont(font or fontName or STANDARD_TEXT_FONT, size, style)
 	end
 	if text.SetJustifyH and text.GetJustifyH and justifyHBefore and justifyHBefore ~= text:GetJustifyH() then
