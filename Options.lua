@@ -153,30 +153,82 @@ end
 
 local function CreateSlider(row, get, set, min, max, step, decimals, disabledFn)
 	local slider = CreateFrame("Slider", nil, row, "OptionsSliderTemplate")
-	slider:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-	slider:SetSize(150, 16)
+	slider:SetPoint("RIGHT", row, "RIGHT", -60, 0)
+	slider:SetSize(100, 16)
 	slider:SetMinMaxValues(min, max)
 	slider:SetValueStep(step)
 	slider:SetObeyStepOnDrag(true)
+	slider.Text:Hide()
+	if slider.Low then slider.Low:SetText(format("%." .. (decimals or 0) .. "f", min)) end
+	if slider.High then slider.High:SetText(format("%." .. (decimals or 0) .. "f", max)) end
+
+	local eb = CreateFrame("EditBox", nil, row, "InputBoxTemplate")
+	eb:SetSize(40, 22)
+	eb:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+	eb:SetAutoFocus(false)
+	eb:SetFontObject("GameFontHighlight")
+	eb:SetTextColor(1, 1, 1)
+	eb:SetScript("OnUpdate", function(self)
+		self:SetText(format("%." .. (decimals or 0) .. "f", get() or 0))
+		self:SetCursorPosition(0)
+		self:SetScript("OnUpdate", nil)
+	end)
+
+	local fmt = function(v)
+		return format("%." .. (decimals or 0) .. "f", v)
+	end
 
 	local widget = {
-		refresh = function()
-			slider.locked = true
-			slider:SetValue(get())
-			slider.locked = false
-			slider.Text:SetText(format("%." .. (decimals or 0) .. "f", get()))
-		end,
+	refresh = function()
+		local v = get()
+		eb:SetText(fmt(v))
+		eb:SetCursorPosition(0)
+		slider.locked = true
+		slider:SetValue(v)
+		slider.locked = false
+	end,
 		SetDisabled = function(_, disabled)
 			slider:SetEnabled(not disabled)
+			eb:SetEnabled(not disabled)
 			slider:SetAlpha(disabled and 0.4 or 1)
+			eb:SetAlpha(disabled and 0.4 or 1)
 		end,
 	}
+
 	slider:SetScript("OnValueChanged", function(self, value)
 		if not self.locked then
 			set(value)
-			self.Text:SetText(format("%." .. (decimals or 0) .. "f", value))
+			eb:SetText(fmt(value))
+			eb:SetCursorPosition(0)
 		end
 	end)
+
+	local function ApplyEdit()
+		local v = tonumber(eb:GetText())
+		if v == nil then
+			eb:SetText(fmt(get()))
+			eb:SetCursorPosition(0)
+			return
+		end
+		if v < min then
+			v = min
+		elseif v > max then
+			v = max
+		end
+		set(v)
+		slider.locked = true
+		slider:SetValue(v)
+		slider.locked = false
+		eb:SetText(fmt(v))
+		eb:SetCursorPosition(0)
+	end
+
+	eb:SetScript("OnEnterPressed", function(self)
+		self:ClearFocus()
+		ApplyEdit()
+	end)
+	eb:SetScript("OnEditFocusLost", ApplyEdit)
+
 	widget.refresh()
 
 	return Track(widget, disabledFn)
@@ -685,7 +737,15 @@ local function NewLayout(parent, compact)
 			controlBuilder(row)
 		end
 
-		self.y = self.y - height
+		local needed = height
+		for _, child in ipairs({ row:GetChildren() }) do
+			if child:GetObjectType() == "Slider" then
+				needed = math.max(needed, compact and 36 or 40)
+				break
+			end
+		end
+
+		self.y = self.y - needed - (compact and 4 or 8)
 	end
 
 	function layout:Text(text, height)
