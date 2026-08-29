@@ -1,5 +1,5 @@
 ## Interface: 120100
-## Version: 1.0.1
+## Version: 1.0.2
 ## Title: Extra Items Bar
 ## Title-zhCN: 额外物品条
 ## Notes: A standalone extraction of the "Extra Items Bar" module from ElvUI_WindTools. No ElvUI required.

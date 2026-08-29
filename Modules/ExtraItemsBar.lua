@@ -237,7 +237,7 @@ local styleConfig = {
 				tile = false,
 				edgeSize = 0,
 			},
-			bgColor = { 0, 0, 0, 0.8 },
+			bgColor = { 0, 0, 0, 0.45 },
 			bgColorTransparent = { 0, 0, 0, 0 },
 			borderColor = { 0.6, 0.6, 0.6, 1 },
 		},
@@ -262,7 +262,7 @@ local styleConfig = {
 				tile = false,
 				edgeSize = 0,
 			},
-			bgColor = { 0, 0, 0, 0.8 },
+			bgColor = { 0, 0, 0, 0.45 },
 			bgColorTransparent = { 0, 0, 0, 0 },
 			borderColor = { 0, 0, 0, 1 },
 		},
@@ -287,26 +287,60 @@ function EIB:GetBarStyle()
 	return "grid"
 end
 
--- Replacement for E.ActionBars:StyleButton
-function EIB:StyleButton(button)
-	local cfg = styleConfig[EIB:GetBarStyle()].button
-	button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-	local highlight = button:GetHighlightTexture()
-	highlight:SetBlendMode("ADD")
-	highlight:SetVertexColor(unpack(cfg.highlightColor))
-
-	button:SetPushedTexture("Interface\\Buttons\\WHITE8X8")
-	local pushed = button:GetPushedTexture()
-	pushed:SetVertexColor(unpack(cfg.pushedColor))
-end
-
 -- Apply the current bar style to an existing button backdrop without touching
 -- the border color, which is driven by item data (see SetUpButton).
 function EIB:StyleButtonBackdrop(button)
 	local style = EIB:GetBarStyle()
 	local cfg = styleConfig[style].button
-	button:SetBackdrop(cfg.backdrop)
-	button:SetBackdropColor(unpack(cfg.bgColor))
+	local showChrome = true
+	if button.isEmpty then
+		showChrome = (style == "grid") and (button.barDB and button.barDB.backdrop)
+	end
+
+	if not showChrome then
+		local hl = button:GetHighlightTexture()
+		if hl then
+			hl:SetAlpha(0)
+		end
+		local p = button:GetPushedTexture()
+		if p then
+			p:SetAlpha(0)
+		end
+	else
+		button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+		local highlight = button:GetHighlightTexture()
+		if highlight then
+			highlight:SetBlendMode("ADD")
+			highlight:SetVertexColor(unpack(cfg.highlightColor))
+		end
+		button:SetPushedTexture("Interface\\Buttons\\WHITE8X8")
+		local pushed = button:GetPushedTexture()
+		if pushed then
+			pushed:SetVertexColor(unpack(cfg.pushedColor))
+		end
+	end
+
+	local backdropCfg = cfg.backdrop
+	if style == "flat" and not showChrome then
+		backdropCfg = { bgFile = "Interface\\Buttons\\WHITE8X8", tile = false, edgeSize = 0 }
+	end
+	button:SetBackdrop(backdropCfg)
+	button:SetBackdropColor(0, 0, 0, 0)
+
+	if not button.bgTex then
+		button.bgTex = button:CreateTexture(nil, "BACKGROUND")
+		button.bgTex:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
+		button.bgTex:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+		button.bgTex:SetTexture("Interface\\Buttons\\WHITE8X8")
+	end
+
+	if button.barDB and button.barDB.backdrop then
+		local c = styleConfig[style].bar.bgColor
+		button.bgTex:SetVertexColor(c[1], c[2], c[3], c[4])
+		button.bgTex:Show()
+	else
+		button.bgTex:Hide()
+	end
 
 	local iconInset = style == "grid" and 2 or 1
 
@@ -323,7 +357,7 @@ function EIB:StyleButtonBackdrop(button)
 			frame:ClearAllPoints()
 			frame:SetPoint("TOPLEFT", button, "TOPLEFT")
 			frame:SetSize(info.frame.width * scale, info.frame.height * scale)
-			frame:Show()
+			frame:SetShown(showChrome)
 		else
 			frame:Hide()
 		end
@@ -414,6 +448,14 @@ function EB:CreateButton(name, barDB)
 	button:EnableMouse(true)
 	button:RegisterForClicks(EIB.UseKeyDown and "AnyDown" or "AnyUp")
 
+	button.barDB = barDB
+	button.isEmpty = true
+
+	button.bgTex = button:CreateTexture(nil, "BACKGROUND")
+	button.bgTex:SetPoint("TOPLEFT", button, "TOPLEFT", 1, -1)
+	button.bgTex:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", -1, 1)
+	button.bgTex:SetTexture("Interface\\Buttons\\WHITE8X8")
+
 	EIB:StyleButtonBackdrop(button)
 	button:SetBackdropBorderColor(unpack(styleConfig[EIB:GetBarStyle()].button.borderColor))
 
@@ -430,7 +472,7 @@ function EB:CreateButton(name, barDB)
 	EIB:SetFont(qualityTier, {
 		size = barDB.qualityTier.size,
 		style = "OUTLINE",
-	})
+	}, true)
 
 	local count = button:CreateFontString(nil, "OVERLAY")
 	count:SetTextColor(1, 1, 1, 1)
@@ -458,15 +500,15 @@ function EB:CreateButton(name, barDB)
 		local qualityInfo = C_TradeSkillUI_GetItemReagentQualityInfo(itemIDOrLink)
 
 		if not qualityInfo or not qualityInfo.icon or qualityInfo.icon == "" then
+			button.qualityTierIcon = nil
 			button.qualityTier:SetText("")
 			button.qualityTier:Hide()
 		else
-			button.qualityTier:SetText(CreateAtlasMarkup(qualityInfo.icon))
+			button.qualityTierIcon = qualityInfo.icon
+			button.qualityTier:SetText(CreateAtlasMarkup(qualityInfo.icon, barDB.qualityTier.size, barDB.qualityTier.size))
 			button.qualityTier:Show()
 		end
 	end
-
-	EIB:StyleButton(button)
 
 	return button
 end
@@ -479,6 +521,37 @@ function EB:SetUpButton(button, itemData, slotID, waitGroup)
 	button.countText = nil
 	button.setupToken = (button.setupToken or 0) + 1
 	local setupToken = button.setupToken
+	button.isEmpty = not itemData and not slotID
+
+	if not itemData and not slotID then
+		if button.tex then
+			button.tex:SetTexture(nil)
+		end
+		if button.count then
+			button.count:SetText("")
+		end
+		if button.bind then
+			button.bind:SetText("")
+		end
+		if button.qualityTier then
+			button.qualityTierIcon = nil
+			button.qualityTier:SetText("")
+			button.qualityTier:Hide()
+		end
+		if button.cooldown then
+			CooldownFrame_Set(button.cooldown, 0, 0, 0)
+		end
+		button:SetScript("OnEnter", nil)
+		button:SetScript("OnLeave", nil)
+		button:SetScript("OnUpdate", nil)
+		if not InCombatLockdown() then
+			button:SetAttribute("type", nil)
+			button:SetAttribute("macrotext", nil)
+		end
+		EIB:StyleButtonBackdrop(button)
+		button:Show()
+		return
+	end
 
 	if itemData then
 		button.itemID = itemData.itemID
@@ -876,20 +949,19 @@ function EB:UpdateBar(id)
 	bar:SetSize(newBarWidth, newBarHeight)
 	EIB.Move:RefreshMover(id)
 
-	-- Hide buttons not in use
-	if buttonID == 1 then
-		for hideButtonID = 1, 12 do
-			bar.buttons[hideButtonID]:Hide()
-		end
-	else
-		if buttonID <= 12 then
-			for hideButtonID = buttonID, 12 do
-				bar.buttons[hideButtonID]:Hide()
-			end
-		end
+	-- Fixed grid: always show `numButtons` cells (including empty slots)
+	local totalCells = math.min(barDB.numButtons, #bar.buttons)
+
+	for i = totalCells + 1, #bar.buttons do
+		bar.buttons[i]:Hide()
 	end
 
-	for i = 1, buttonID - 1 do
+	for i = 1, totalCells do
+		-- Empty slots (beyond the current item count) are cleared but kept visible
+		if i >= buttonID then
+			self:SetUpButton(bar.buttons[i], nil, nil, bar.waitGroup)
+			self:UpdateButtonSize(bar.buttons[i], barDB)
+		end
 		-- Reposition icons
 		local anchor = barDB.anchor
 		local button = bar.buttons[i]
@@ -925,7 +997,7 @@ function EB:UpdateBar(id)
 		EIB:SetFont(button.qualityTier, {
 			size = barDB.qualityTier.size,
 			style = "OUTLINE",
-		})
+		}, true)
 
 		EIB:SetFont(button.count, barDB.countFont)
 		EIB:SetFont(button.bind, barDB.bindFont)
@@ -935,6 +1007,13 @@ function EB:UpdateBar(id)
 
 		button.qualityTier:ClearAllPoints()
 		button.qualityTier:SetPoint("TOPLEFT", button, "TOPLEFT", barDB.qualityTier.xOffset, barDB.qualityTier.yOffset)
+
+		-- Re-bake the atlas markup with the current size so the star icon
+		-- follows the quality-tier size setting (atlas size is fixed in the
+		-- text string and does not scale with the font size).
+		if button.qualityTierIcon then
+			button.qualityTier:SetText(CreateAtlasMarkup(button.qualityTierIcon, barDB.qualityTier.size, barDB.qualityTier.size))
+		end
 
 		button.count:ClearAllPoints()
 		button.count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", barDB.countFont.xOffset, barDB.countFont.yOffset)

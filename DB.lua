@@ -34,7 +34,7 @@ local function barDefaults()
 		snapSpacing = 2,
 		tooltip = true,
 		qualityTier = {
-			size = 16,
+			size = 14,
 			xOffset = 0,
 			yOffset = 0,
 		},
