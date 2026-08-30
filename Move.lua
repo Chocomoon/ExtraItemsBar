@@ -37,7 +37,7 @@ local function NormalizeSavedPosition(anchor)
 	end
 	return {
 		point = "BOTTOMLEFT",
-		relativeTo = "WorldFrame",
+		relativeTo = "UIParent",
 		relativePoint = "BOTTOMLEFT",
 		xOfs = left / uw,
 		yOfs = bottom / uh,
@@ -55,11 +55,11 @@ local function ApplySavedPosition(anchor, key, saved)
 	local uw, uh = _G.UIParent:GetWidth(), _G.UIParent:GetHeight()
 
 	if saved.normalized and uw and uh then
-		anchor:SetPoint("BOTTOMLEFT", _G.WorldFrame, "BOTTOMLEFT", saved.xOfs * uw, saved.yOfs * uh)
+		anchor:SetPoint("BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", saved.xOfs * uw, saved.yOfs * uh)
 		return
 	end
 
-	local relative = saved.relativeTo and _G[saved.relativeTo] or _G.WorldFrame
+	local relative = saved.relativeTo and _G[saved.relativeTo] or _G.UIParent
 	anchor:SetPoint(saved.point, relative, saved.relativePoint, saved.xOfs, saved.yOfs)
 
 	local normalized = NormalizeSavedPosition(anchor)
@@ -68,7 +68,7 @@ local function ApplySavedPosition(anchor, key, saved)
 		EIB.db.profile.position = position
 		position[key] = normalized
 		anchor:ClearAllPoints()
-		anchor:SetPoint("BOTTOMLEFT", _G.WorldFrame, "BOTTOMLEFT", normalized.xOfs * uw, normalized.yOfs * uh)
+		anchor:SetPoint("BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", normalized.xOfs * uw, normalized.yOfs * uh)
 	end
 end
 
@@ -153,7 +153,7 @@ local function DragUpdate()
 	end
 	local cx, cy = GetCursorUIPosition()
 	local x, y = SnapXY(anchor, cx - EIB.Move.grabX, cy - EIB.Move.grabY)
-	anchor:SetPoint("BOTTOMLEFT", _G.WorldFrame, "BOTTOMLEFT", x, y)
+	anchor:SetPoint("BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", x, y)
 end
 
 ---Create a draggable mover for an anchor frame.
@@ -173,7 +173,7 @@ function EIB.Move:CreateMover(anchor, key, text, defaultPoint, relativeTo, relat
 	if saved then
 		ApplySavedPosition(anchor, key, saved)
 	else
-		anchor:SetPoint(defaultPoint, relativeTo or _G.WorldFrame, relativePoint or defaultPoint, xOfs or 0, yOfs or 0)
+		anchor:SetPoint(defaultPoint, relativeTo or _G.UIParent, relativePoint or defaultPoint, xOfs or 0, yOfs or 0)
 	end
 
 	-- Transparent drag handle shown on top only in move mode
@@ -214,7 +214,7 @@ function EIB.Move:CreateMover(anchor, key, text, defaultPoint, relativeTo, relat
 			local point, relativeTo, relativePoint, xOfs, yOfs = anchor:GetPoint()
 			saved = {
 				point = point,
-				relativeTo = relativeTo and relativeTo:GetName() or "WorldFrame",
+				relativeTo = relativeTo and relativeTo:GetName() or "UIParent",
 				relativePoint = relativePoint,
 				xOfs = xOfs,
 				yOfs = yOfs,
@@ -314,13 +314,13 @@ function EIB.Move:ResetPosition()
 			if defaults then
 				mover.anchor:SetPoint(
 					defaults.defaultPoint,
-					defaults.relativeTo or _G.WorldFrame,
+					defaults.relativeTo or _G.UIParent,
 					defaults.relativePoint or defaults.defaultPoint,
 					defaults.xOfs or 0,
 					defaults.yOfs or 0
 				)
 			else
-				mover.anchor:SetPoint("CENTER", _G.WorldFrame, "CENTER", 0, 0)
+				mover.anchor:SetPoint("CENTER", _G.UIParent, "CENTER", 0, 0)
 			end
 		end
 	end

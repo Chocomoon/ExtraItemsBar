@@ -771,7 +771,7 @@ function EB:CreateBar(id)
 		"WTExtraItemsBar" .. id .. "Mover",
 		L["Extra Items Bar"] .. " " .. id,
 		"BOTTOMLEFT",
-		_G.WorldFrame,
+		_G.UIParent,
 		"LEFT",
 		5,
 		(id - 1) * 45
