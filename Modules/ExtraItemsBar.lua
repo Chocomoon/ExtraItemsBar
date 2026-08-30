@@ -377,12 +377,20 @@ function EIB:StyleButtonBackdrop(button)
 
 	local highlight = button:GetHighlightTexture()
 	if highlight then
-		highlight:SetVertexColor(unpack(cfg.highlightColor))
+		if button.isEmpty then
+			highlight:SetAlpha(0)
+		else
+			highlight:SetVertexColor(unpack(cfg.highlightColor))
+		end
 	end
 
 	local pushed = button:GetPushedTexture()
 	if pushed then
-		pushed:SetVertexColor(unpack(cfg.pushedColor))
+		if button.isEmpty then
+			pushed:SetAlpha(0)
+		else
+			pushed:SetVertexColor(unpack(cfg.pushedColor))
+		end
 	end
 end
 
@@ -703,6 +711,8 @@ function EB:SetUpButton(button, itemData, slotID, waitGroup)
 			button:SetAttribute("macrotext", macroText)
 		end
 	end
+
+	EIB:StyleButtonBackdrop(button)
 end
 
 function EB:UpdateButtonSize(button, barDB)
