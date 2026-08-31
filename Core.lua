@@ -133,6 +133,98 @@ function EIB:OutOfCombat(callback, ...)
 	end
 end
 
+-- Debug helpers
+
+function EIB:DebugEnabled()
+	return EIB.db and EIB.db.profile and EIB.db.profile.debug
+end
+
+function EIB:DebugPrint(...)
+	if self:DebugEnabled() then
+		print(format("|cff5385ed%s Debug|r:", EIB.name), ...)
+	end
+end
+
+local function SerializeSaved(pos)
+	if not pos then
+		return "nil"
+	end
+	if pos.normalized then
+		return format("{norm x=%.4f y=%.4f}", pos.xOfs or 0, pos.yOfs or 0)
+	end
+	return format("{%s %s->%s %.1f,%.1f}", pos.point or "?", pos.relativeTo or "?", pos.relativePoint or "?", pos.xOfs or 0, pos.yOfs or 0)
+end
+
+function EIB:SaveSnapshot()
+	local posData = EIB.db.profile.position
+	if not posData then
+		return
+	end
+	local snap = {}
+	for i = 1, 5 do
+		local key = "WTExtraItemsBar" .. i .. "Mover"
+		if posData[key] then
+			snap[key] = posData[key]
+		end
+	end
+	if next(snap) then
+		EIB.db.profile.debugSnapshot = snap
+	end
+end
+
+function EIB:DumpPositions(label)
+	if not self:DebugEnabled() then
+		return
+	end
+
+	local uw, uh = _G.UIParent:GetWidth(), _G.UIParent:GetHeight()
+	local scale = _G.UIParent:GetEffectiveScale()
+	self:DebugPrint(format("=== %s (v%s) ===", label, self.version or "?"))
+	self:DebugPrint(format("UIParent: %dx%d (scale %.2f)", uw or 0, uh or 0, scale))
+
+	-- Output pre-reload snapshot if available
+	local snap = EIB.db.profile.debugSnapshot
+	if snap then
+		self:DebugPrint("--- before reload ---")
+		for i = 1, 5 do
+			local key = "WTExtraItemsBar" .. i .. "Mover"
+			if snap[key] then
+				self:DebugPrint(format("  saved[%s] = %s", key, SerializeSaved(snap[key])))
+			end
+		end
+		EIB.db.profile.debugSnapshot = nil
+	end
+
+	-- Output current state
+	self:DebugPrint("--- after reload ---")
+	local posData = EIB.db.profile.position
+	if posData then
+		for i = 1, 5 do
+			local key = "WTExtraItemsBar" .. i .. "Mover"
+			if posData[key] then
+				self:DebugPrint(format("  saved[%s] = %s", key, SerializeSaved(posData[key])))
+			end
+		end
+	else
+		self:DebugPrint("  position data: nil (no bars moved yet)")
+	end
+
+	for i = 1, 5 do
+		local bar = self.bars and self.bars[i]
+		if bar then
+			local left, bottom = bar:GetLeft(), bar:GetBottom()
+			local w, h = bar:GetWidth(), bar:GetHeight()
+			local key = "WTExtraItemsBar" .. i .. "Mover"
+			local saved = posData and posData[key]
+			local path = self.Move and self.Move.appliedPaths and self.Move.appliedPaths[key] or "?"
+			self:DebugPrint(format("  Bar%d: saved=%s path=%s actual=(%.1f,%.1f) size=(%.0fx%.0f)",
+				i, SerializeSaved(saved), path, left or 0, bottom or 0, w, h))
+		else
+			self:DebugPrint(format("  Bar%d: (not created)", i))
+		end
+	end
+end
+
 -- Slash commands
 SLASH_EXTRAITEMSBAR1 = "/extraitemsbar"
 SLASH_EXTRAITEMSBAR2 = "/eib"
@@ -144,6 +236,21 @@ SlashCmdList["EXTRAITEMSBAR"] = function(input)
 		EIB:ToggleMoveMode()
 	elseif input == "reset" then
 		EIB:ResetPosition()
+	elseif input == "debug" then
+		if not EIB.db or not EIB.db.profile then
+			EIB:Print(EIB.L["DEBUG_DB_NOT_READY"])
+			return
+		end
+		EIB.db.profile.debug = not EIB.db.profile.debug
+		if EIB.db.profile.debug then
+			EIB:Print(EIB.L["DEBUG_ENABLED"])
+			EIB:SaveSnapshot()
+		else
+			EIB:Print(EIB.L["DEBUG_DISABLED"])
+			EIB.db.profile.debugSnapshot = nil
+		end
+	elseif input == "dump" then
+		EIB:DumpPositions("DUMP")
 	elseif input == "help" then
 		EIB:PrintHelp()
 	elseif input == "" then
@@ -154,9 +261,11 @@ SlashCmdList["EXTRAITEMSBAR"] = function(input)
 end
 
 function EIB:PrintHelp()
-	EIB:Print(EIB.L["SLASH_OPEN"] or "/eib - open options")
-	EIB:Print(EIB.L["SLASH_UNLOCK"] or "/eib unlock - toggle drag mode")
-	EIB:Print(EIB.L["SLASH_RESET"] or "/eib reset - reset bar positions")
+	EIB:Print(EIB.L["SLASH_OPEN"])
+	EIB:Print(EIB.L["SLASH_UNLOCK"])
+	EIB:Print(EIB.L["SLASH_RESET"])
+	EIB:Print(EIB.L["SLASH_DEBUG"])
+	EIB:Print(EIB.L["SLASH_DUMP"])
 end
 
 function EIB:Print(...)
@@ -206,13 +315,15 @@ EIB.eventFrame:SetScript("OnEvent", function(_, event, addonLoaded)
 
 		EIB:Initialize()
 		EIB:OpenOptionsLater()
-	elseif event == "PLAYER_LOGIN" and not EIB.optionsPanel then
-		EIB:RegisterOptionsPanel()
-		-- All addons are loaded by now, so auto style detection is accurate.
-		EIB:ApplyBarStyle()
-		-- Bindings are fully loaded by PLAYER_LOGIN; refresh keybind text so
-		-- it is correct on the first frame (GetBindingKey may be empty at ADDON_LOADED).
-		EIB:UpdateBinding()
+	elseif event == "PLAYER_LOGIN" then
+		if not EIB.optionsPanel then
+			EIB:RegisterOptionsPanel()
+			-- All addons are loaded by now, so auto style detection is accurate.
+			EIB:ApplyBarStyle()
+			-- Bindings are fully loaded by PLAYER_LOGIN; refresh keybind text so
+			-- it is correct on the first frame (GetBindingKey may be empty at ADDON_LOADED).
+			EIB:UpdateBinding()
+		end
 	end
 end)
 EIB.eventFrame:RegisterEvent("PLAYER_LOGIN")
@@ -234,6 +345,7 @@ function EIB:ResetPosition()
 		return
 	end
 
+	self.db.profile.debugSnapshot = nil
 	self.Move:ResetPosition()
 end
 
