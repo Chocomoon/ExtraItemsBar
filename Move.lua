@@ -17,6 +17,7 @@ EIB.Move.moveMode = false
 EIB.Move.dragAnchor = nil
 EIB.Move.grabX = 0
 EIB.Move.grabY = 0
+EIB.Move.appliedPaths = {} -- track which path each bar used: NORMALIZED / LEGACY / LEGACY_MIGRATED / DEFAULT
 
 local function GetSavedPosition(key)
 	local position = EIB.db and EIB.db.profile.position
@@ -48,15 +49,17 @@ end
 ---Apply a saved position to an anchor frame. New entries are stored as
 ---normalized UIParent fractions; legacy entries are kept as-is visually but
 ---converted to the normalized format and written back (auto migration).
+---Returns a string indicating which code path was taken (for debug logging).
 ---@param anchor Frame
 ---@param key string
 ---@param saved table
+---@return string path
 local function ApplySavedPosition(anchor, key, saved)
 	local uw, uh = _G.UIParent:GetWidth(), _G.UIParent:GetHeight()
 
-	if saved.normalized and uw and uh then
+	if saved.normalized and uw and uh and uw > 0 and uh > 0 then
 		anchor:SetPoint("BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", saved.xOfs * uw, saved.yOfs * uh)
-		return
+		return "NORMALIZED"
 	end
 
 	local relative = saved.relativeTo and _G[saved.relativeTo] or _G.UIParent
@@ -69,7 +72,10 @@ local function ApplySavedPosition(anchor, key, saved)
 		position[key] = normalized
 		anchor:ClearAllPoints()
 		anchor:SetPoint("BOTTOMLEFT", _G.UIParent, "BOTTOMLEFT", normalized.xOfs * uw, normalized.yOfs * uh)
+		return "LEGACY_MIGRATED"
 	end
+
+	return "LEGACY"
 end
 
 local snapThreshold = 10
@@ -170,11 +176,15 @@ function EIB.Move:CreateMover(anchor, key, text, defaultPoint, relativeTo, relat
 
 	anchor:SetMovable(true)
 	anchor:ClearAllPoints()
+	local path
 	if saved then
-		ApplySavedPosition(anchor, key, saved)
+		path = ApplySavedPosition(anchor, key, saved)
 	else
 		anchor:SetPoint(defaultPoint, relativeTo or _G.UIParent, relativePoint or defaultPoint, xOfs or 0, yOfs or 0)
+		path = "DEFAULT"
 	end
+
+	self.appliedPaths[key] = path
 
 	-- Transparent drag handle shown on top only in move mode
 	-- Handle frame is 16px larger than anchor (8px each side) so that
@@ -257,18 +267,40 @@ function EIB.Move:CreateMover(anchor, key, text, defaultPoint, relativeTo, relat
 			existing.anchor = anchor
 			existing.defaults = defaults
 			tinsert(self.movers, tremove(self.movers, index))
+			-- Clean up the unused new handle (existing handle is reused instead)
+			handle:Hide()
+			handle:SetScript("OnUpdate", nil)
+			handle:SetScript("OnMouseDown", nil)
+			handle:SetScript("OnMouseUp", nil)
 			if self.moveMode then
-				handle:EnableMouse(true)
-				handle:Show()
+				existing.handle:EnableMouse(true)
+				existing.handle:Show()
 			else
-				handle:EnableMouse(false)
-				handle:Hide()
+				existing.handle:EnableMouse(false)
+				existing.handle:Hide()
 			end
 			return anchor
 		end
 	end
 
 	tinsert(self.movers, { key = key, anchor = anchor, handle = handle, defaults = defaults })
+
+	-- Deferred application: if UIParent is not yet ready, re-apply on PLAYER_ENTERING_WORLD
+	if saved and saved.normalized then
+		local uw, uh = _G.UIParent:GetWidth(), _G.UIParent:GetHeight()
+		if not uw or not uh or uw <= 0 or uh <= 0 then
+			local frame = CreateFrame("Frame")
+			frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+			frame:SetScript("OnEvent", function(self)
+				self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+				self:SetScript("OnEvent", nil)
+				local s = GetSavedPosition(key)
+				if s then
+					ApplySavedPosition(anchor, key, s)
+				end
+			end)
+		end
+	end
 
 	if self.moveMode then
 		handle:EnableMouse(true)
