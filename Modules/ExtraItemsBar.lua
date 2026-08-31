@@ -1076,18 +1076,7 @@ function EB:UpdateBars()
 	self:UpdateBinding()
 end
 
--- Coalesce chatty event-driven rebuilds (bag/zone changes fire in bursts)
--- into a single UpdateBars pass per ~0.15s window.
-function EB:ScheduleUpdateBars()
-	if self.updatePending then
-		return
-	end
-	self.updatePending = true
-	C_Timer_After(0.15, function()
-		self.updatePending = false
-		self:UpdateBars()
-	end)
-end
+
 
 do
 	local lastUpdateTime = 0
@@ -1198,19 +1187,19 @@ function EB:Initialize()
 	self:UpdateBars()
 	self:UpdateBinding()
 
-	self:RegisterEvent("BAG_UPDATE_DELAYED", "ScheduleUpdateBars")
+	self:RegisterEvent("BAG_UPDATE_DELAYED", "UpdateBars")
 	self:RegisterEvent("ITEM_LOCKED")
-	self:RegisterEvent("PLAYER_ALIVE", "ScheduleUpdateBars")
+	self:RegisterEvent("PLAYER_ALIVE", "UpdateBars")
 	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", "UpdateEquipmentItem")
-	self:RegisterEvent("PLAYER_UNGHOST", "ScheduleUpdateBars")
+	self:RegisterEvent("PLAYER_UNGHOST", "UpdateBars")
 	self:RegisterEvent("QUEST_ACCEPTED", "UpdateQuestItem")
 	self:RegisterEvent("QUEST_LOG_UPDATE", "UpdateQuestItem")
 	self:RegisterEvent("QUEST_TURNED_IN", "UpdateQuestItem")
 	self:RegisterEvent("QUEST_WATCH_LIST_CHANGED", "UpdateQuestItem")
 	self:RegisterEvent("UNIT_INVENTORY_CHANGED")
 	self:RegisterEvent("UPDATE_BINDINGS", "UpdateBinding")
-	self:RegisterEvent("ZONE_CHANGED", "ScheduleUpdateBars")
-	self:RegisterEvent("ZONE_CHANGED_NEW_AREA", "ScheduleUpdateBars")
+	self:RegisterEvent("ZONE_CHANGED", "UpdateBars")
+	self:RegisterEvent("ZONE_CHANGED_NEW_AREA", "UpdateBars")
 
 	self.initialized = true
 end
